@@ -1,0 +1,20 @@
+{
+  "name": "Payroll Calculator",
+  "short_name": "Payroll",
+  "description": "Calculate your monthly take-home pay with overtime and Cambodia income tax.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#dce8ff",
+  "theme_color": "#4f6ef7",
+  "categories": ["finance", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

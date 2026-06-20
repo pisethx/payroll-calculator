@@ -1,0 +1,449 @@
+/* ==========================================================================
+   Payroll Calculator — Liquid Glass UI
+   ========================================================================== */
+
+:root {
+  /* Typography — 3-size scale */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  --font-size-body: 1rem;
+  --font-size-heading: 1.125rem;
+  --font-size-title: 1.75rem;
+  --font-size-display: 2rem;
+  --line-height: 1.5;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing — 8px grid */
+  --space-1: 0.5rem;   /*  8px */
+  --space-2: 1rem;     /* 16px */
+  --space-3: 1.5rem;   /* 24px */
+  --space-4: 2rem;     /* 32px */
+  --space-5: 2.5rem;   /* 40px */
+
+  /* Glass surfaces */
+  --glass-bg: rgba(255, 255, 255, 0.28);
+  --glass-bg-strong: rgba(255, 255, 255, 0.42);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-border-subtle: rgba(255, 255, 255, 0.28);
+  --glass-blur: 28px;
+  --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.14);
+  --glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.85),
+                 inset 0 -1px 1px rgba(255, 255, 255, 0.15);
+
+  /* Colors */
+  --color-text: #1a1f36;
+  --color-text-secondary: rgba(26, 31, 54, 0.62);
+  --color-text-tertiary: rgba(26, 31, 54, 0.45);
+  --color-accent: #4f6ef7;
+  --color-accent-soft: rgba(79, 110, 247, 0.15);
+  --color-error: #e5484d;
+  --color-error-bg: rgba(229, 72, 77, 0.1);
+  --color-deduction: #c45c00;
+  --color-take-home-bg: rgba(79, 110, 247, 0.22);
+  --color-take-home-border: rgba(79, 110, 247, 0.35);
+
+  /* Layout */
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+  --max-width: 480px;
+}
+
+/* Reset & Base
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height);
+  color: var(--color-text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: linear-gradient(145deg, #dce8ff 0%, #e8e0ff 35%, #f5e6ff 65%, #dce8ff 100%);
+}
+
+/* Animated Background Orbs
+   -------------------------------------------------------------------------- */
+
+.background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.background__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.85;
+  animation: float 18s ease-in-out infinite;
+}
+
+.background__orb--1 {
+  width: 420px;
+  height: 420px;
+  top: -120px;
+  left: -80px;
+  background: radial-gradient(circle, #7c9cff 0%, transparent 70%);
+  animation-delay: 0s;
+}
+
+.background__orb--2 {
+  width: 360px;
+  height: 360px;
+  top: 40%;
+  right: -100px;
+  background: radial-gradient(circle, #b794f6 0%, transparent 70%);
+  animation-delay: -6s;
+}
+
+.background__orb--3 {
+  width: 480px;
+  height: 480px;
+  bottom: -160px;
+  left: 20%;
+  background: radial-gradient(circle, #6ee7d8 0%, transparent 70%);
+  animation-delay: -12s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -20px) scale(1.05); }
+  66%       { transform: translate(-20px, 15px) scale(0.97); }
+}
+
+/* App Layout
+   -------------------------------------------------------------------------- */
+
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding:
+    max(var(--space-4), env(safe-area-inset-top))
+    max(var(--space-2), env(safe-area-inset-right))
+    max(var(--space-5), env(safe-area-inset-bottom))
+    max(var(--space-2), env(safe-area-inset-left));
+}
+
+.header {
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.header h1 {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: var(--color-text);
+}
+
+.subtitle {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Glass Card
+   -------------------------------------------------------------------------- */
+
+.card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow), var(--glass-inset);
+  padding: var(--space-3);
+  isolation: isolate;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.15) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.card h2 {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height);
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+/* Form
+   -------------------------------------------------------------------------- */
+
+.form-group {
+  margin-bottom: var(--space-3);
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+label {
+  display: block;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-prefix {
+  position: absolute;
+  left: var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  line-height: var(--line-height);
+  color: var(--color-text);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--glass-inset);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  -moz-appearance: textfield;
+}
+
+.input-wrapper input[type="number"] {
+  padding-left: calc(var(--space-2) + 1.125rem);
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"]::placeholder {
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-normal);
+}
+
+input[type="number"]:focus {
+  outline: none;
+  border-color: rgba(79, 110, 247, 0.5);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--glass-inset), 0 0 0 3px var(--color-accent-soft);
+}
+
+input[type="number"].input--error {
+  border-color: rgba(229, 72, 77, 0.55);
+  background: var(--color-error-bg);
+}
+
+input[type="number"].input--error:focus {
+  box-shadow: var(--glass-inset), 0 0 0 3px rgba(229, 72, 77, 0.15);
+}
+
+.error-message {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-error);
+}
+
+/* Results
+   -------------------------------------------------------------------------- */
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--glass-border-subtle);
+}
+
+.result-row:last-of-type {
+  border-bottom: none;
+}
+
+.result-row dt {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+}
+
+.result-row dd {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.result-row--divider {
+  border-top: 1px solid rgba(26, 31, 54, 0.12);
+  border-bottom: none;
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+.result-row--divider dt,
+.result-row--divider dd {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.result-row--deduction dd {
+  color: var(--color-deduction);
+}
+
+/* Take Home Pay — Glass Accent
+   -------------------------------------------------------------------------- */
+
+.take-home {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    135deg,
+    rgba(79, 110, 247, 0.28) 0%,
+    rgba(124, 156, 255, 0.18) 100%
+  );
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border: 1px solid var(--color-take-home-border);
+  box-shadow: var(--glass-inset), 0 4px 24px rgba(79, 110, 247, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.take-home__label {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.take-home__value {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* Responsive
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 480px) {
+  .app {
+    padding:
+      max(var(--space-5), env(safe-area-inset-top))
+      max(var(--space-3), env(safe-area-inset-right))
+      max(var(--space-5), env(safe-area-inset-bottom))
+      max(var(--space-3), env(safe-area-inset-left));
+  }
+
+  .header h1 {
+    font-size: 2rem;
+  }
+
+  .card {
+    padding: var(--space-4);
+  }
+
+  .take-home {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+
+  .take-home__value {
+    font-size: 2.25rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .result-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  .result-row dd {
+    text-align: left;
+  }
+}
+
+/* Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .background__orb {
+    animation: none;
+  }
+}
