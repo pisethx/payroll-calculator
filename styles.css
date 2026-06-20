@@ -4,8 +4,9 @@
 
 :root {
   /* Typography — 3-size scale */
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
+  --font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
   --font-size-body: 1rem;
   --font-size-heading: 1.125rem;
   --font-size-title: 1.75rem;
@@ -17,33 +18,34 @@
   --font-weight-bold: 700;
 
   /* Spacing — 8px grid */
-  --space-1: 0.5rem;   /*  8px */
-  --space-2: 1rem;     /* 16px */
-  --space-3: 1.5rem;   /* 24px */
-  --space-4: 2rem;     /* 32px */
-  --space-5: 2.5rem;   /* 40px */
+  --space-1: 0.5rem; /*  8px */
+  --space-2: 1rem; /* 16px */
+  --space-3: 1.5rem; /* 24px */
+  --space-4: 2rem; /* 32px */
+  --space-5: 2.5rem; /* 40px */
 
   /* Glass surfaces */
-  --glass-bg: rgba(255, 255, 255, 0.28);
-  --glass-bg-strong: rgba(255, 255, 255, 0.42);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-border-subtle: rgba(255, 255, 255, 0.28);
-  --glass-blur: 28px;
-  --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.14);
-  --glass-inset: inset 0 1px 1px rgba(255, 255, 255, 0.85),
-                 inset 0 -1px 1px rgba(255, 255, 255, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-bg-strong: rgba(255, 255, 255, 1);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-subtle: rgba(0, 0, 0, 0.04);
+  --glass-blur: 18px;
+  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --glass-inset:
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.03);
 
   /* Colors */
-  --color-text: #1a1f36;
-  --color-text-secondary: rgba(26, 31, 54, 0.62);
-  --color-text-tertiary: rgba(26, 31, 54, 0.45);
-  --color-accent: #4f6ef7;
-  --color-accent-soft: rgba(79, 110, 247, 0.15);
-  --color-error: #e5484d;
-  --color-error-bg: rgba(229, 72, 77, 0.1);
-  --color-deduction: #c45c00;
-  --color-take-home-bg: rgba(79, 110, 247, 0.22);
-  --color-take-home-border: rgba(79, 110, 247, 0.35);
+  --color-text: #111111;
+  --color-text-secondary: rgba(17, 17, 17, 0.6);
+  --color-text-tertiary: rgba(17, 17, 17, 0.38);
+  --color-accent: #111111;
+  --color-accent-soft: rgba(17, 17, 17, 0.06);
+  --color-error: #b00020;
+  --color-error-bg: rgba(176, 0, 32, 0.06);
+  --color-deduction: #6b4b00;
+  --color-take-home-bg: rgba(17, 17, 17, 0.04);
+  --color-take-home-border: rgba(17, 17, 17, 0.08);
 
   /* Layout */
   --radius-sm: 0.75rem;
@@ -77,7 +79,7 @@ body {
   color: var(--color-text);
   min-height: 100vh;
   overflow-x: hidden;
-  background: linear-gradient(145deg, #dce8ff 0%, #e8e0ff 35%, #f5e6ff 65%, #dce8ff 100%);
+  background: #f7f7f7;
 }
 
 /* Animated Background Orbs
@@ -104,7 +106,7 @@ body {
   height: 420px;
   top: -120px;
   left: -80px;
-  background: radial-gradient(circle, #7c9cff 0%, transparent 70%);
+  background: rgba(0, 0, 0, 0.03);
   animation-delay: 0s;
 }
 
@@ -113,7 +115,7 @@ body {
   height: 360px;
   top: 40%;
   right: -100px;
-  background: radial-gradient(circle, #b794f6 0%, transparent 70%);
+  background: rgba(0, 0, 0, 0.03);
   animation-delay: -6s;
 }
 
@@ -122,14 +124,21 @@ body {
   height: 480px;
   bottom: -160px;
   left: 20%;
-  background: radial-gradient(circle, #6ee7d8 0%, transparent 70%);
+  background: rgba(0, 0, 0, 0.03);
   animation-delay: -12s;
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(30px, -20px) scale(1.05); }
-  66%       { transform: translate(-20px, 15px) scale(0.97); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 15px) scale(0.97);
+  }
 }
 
 /* App Layout
@@ -140,8 +149,7 @@ body {
   z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
-  padding:
-    max(var(--space-4), env(safe-area-inset-top))
+  padding: max(var(--space-4), env(safe-area-inset-top))
     max(var(--space-2), env(safe-area-inset-right))
     max(var(--space-5), env(safe-area-inset-bottom))
     max(var(--space-2), env(safe-area-inset-left));
@@ -193,12 +201,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0.15) 100%
-  );
+  background: rgba(255, 255, 255, 0.06);
   pointer-events: none;
   z-index: -1;
 }
@@ -260,7 +263,10 @@ input[type="number"] {
   border: 1px solid var(--glass-border-subtle);
   border-radius: var(--radius-sm);
   box-shadow: var(--glass-inset);
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
   -moz-appearance: textfield;
 }
 
@@ -281,9 +287,11 @@ input[type="number"]::placeholder {
 
 input[type="number"]:focus {
   outline: none;
-  border-color: rgba(79, 110, 247, 0.5);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--glass-inset), 0 0 0 3px var(--color-accent-soft);
+  border-color: rgba(17, 17, 17, 0.12);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    var(--glass-inset),
+    0 0 0 3px var(--color-accent-soft);
 }
 
 input[type="number"].input--error {
@@ -292,7 +300,9 @@ input[type="number"].input--error {
 }
 
 input[type="number"].input--error:focus {
-  box-shadow: var(--glass-inset), 0 0 0 3px rgba(229, 72, 77, 0.15);
+  box-shadow:
+    var(--glass-inset),
+    0 0 0 3px rgba(229, 72, 77, 0.15);
 }
 
 .error-message {
@@ -339,7 +349,7 @@ input[type="number"].input--error:focus {
 }
 
 .result-row--divider {
-  border-top: 1px solid rgba(26, 31, 54, 0.12);
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
   border-bottom: none;
   margin-top: var(--space-1);
   padding-top: var(--space-2);
@@ -362,15 +372,13 @@ input[type="number"].input--error:focus {
   margin-top: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  background: linear-gradient(
-    135deg,
-    rgba(79, 110, 247, 0.28) 0%,
-    rgba(124, 156, 255, 0.18) 100%
-  );
+  background: var(--color-take-home-bg);
   backdrop-filter: blur(20px) saturate(200%);
   -webkit-backdrop-filter: blur(20px) saturate(200%);
   border: 1px solid var(--color-take-home-border);
-  box-shadow: var(--glass-inset), 0 4px 24px rgba(79, 110, 247, 0.18);
+  box-shadow:
+    var(--glass-inset),
+    0 4px 18px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -400,8 +408,7 @@ input[type="number"].input--error:focus {
 
 @media (min-width: 480px) {
   .app {
-    padding:
-      max(var(--space-5), env(safe-area-inset-top))
+    padding: max(var(--space-5), env(safe-area-inset-top))
       max(var(--space-3), env(safe-area-inset-right))
       max(var(--space-5), env(safe-area-inset-bottom))
       max(var(--space-3), env(safe-area-inset-left));
