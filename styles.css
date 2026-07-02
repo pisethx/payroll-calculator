@@ -46,8 +46,6 @@
   --color-deduction: #6b4b00;
   --color-take-home-bg: rgba(17, 17, 17, 0.04);
   --color-take-home-border: rgba(17, 17, 17, 0.08);
-  --color-success: #0c5132;
-  --color-success-bg: rgba(12, 81, 50, 0.08);
 
   /* Layout */
   --radius-sm: 0.75rem;
@@ -192,27 +190,6 @@ body {
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
-}
-
-.pwa-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.7rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-success);
-  background: var(--color-success-bg);
-  border: 1px solid rgba(12, 81, 50, 0.15);
-}
-
-.pwa-badge::before {
-  content: "";
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: currentColor;
 }
 
 .install-button {
@@ -380,12 +357,6 @@ input[type="number"].input--error:focus {
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-normal);
   color: var(--color-error);
-}
-
-.input-hint {
-  margin-top: var(--space-1);
-  font-size: 0.875rem;
-  color: var(--color-text-tertiary);
 }
 
 /* Results
