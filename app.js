@@ -151,7 +151,7 @@
    * @returns {{ valid: boolean, value: number | null }}
    */
   function validateInput(input, errorEl, options) {
-    const { label, required, showRequiredError } = options;
+    const { label, required, showRequiredError, emptyAsDefault, defaultValue } = options;
     const raw = input.value.trim();
 
     input.classList.remove("input--error");
@@ -161,6 +161,9 @@
     }
 
     if (raw === "") {
+      if (emptyAsDefault) {
+        return { valid: true, value: defaultValue ?? 0 };
+      }
       if (required && showRequiredError) {
         showError(input, errorEl, `${label} is required.`);
         return { valid: false, value: null };
@@ -244,8 +247,10 @@
 
     const otResult = validateInput(otHoursInput, otHoursError, {
       label: "OT hours",
-      required: true,
-      showRequiredError: touched.otHours,
+      required: false,
+      showRequiredError: false,
+      emptyAsDefault: true,
+      defaultValue: 0,
     });
 
     if (!salaryResult.valid || !otResult.valid) {
@@ -272,6 +277,30 @@
   otHoursInput.addEventListener("input", markTouched("otHours"));
   baseSalaryInput.addEventListener("blur", markTouched("baseSalary"));
   otHoursInput.addEventListener("blur", markTouched("otHours"));
+
+  // Progressive enhancement: show install button only when install prompt is available.
+  let deferredInstallPrompt = null;
+  const installButton = document.getElementById("install-app");
+  if (installButton) {
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installButton.hidden = false;
+    });
+
+    installButton.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      installButton.hidden = true;
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      installButton.hidden = true;
+    });
+  }
 
   // Prevent form submission (calculations are automatic)
   document.getElementById("payroll-form").addEventListener("submit", function (e) {
