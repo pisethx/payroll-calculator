@@ -39,6 +39,8 @@
     otHours: false,
   };
 
+  const summaryEl = document.querySelector(".summary");
+
   const resultElements = {
     baseSalary: document.getElementById("result-base-salary"),
     dailyRate: document.getElementById("result-daily-rate"),
@@ -67,15 +69,6 @@
         maximumFractionDigits: 2,
       })
     );
-  }
-
-  /**
-   * Format OT hours for display (show decimals only when needed).
-   * @param {number} hours
-   * @returns {string}
-   */
-  function formatHours(hours) {
-    return hours % 1 === 0 ? String(hours) : hours.toFixed(2);
   }
 
   // ---------------------------------------------------------------------------
@@ -216,6 +209,7 @@
     resultElements.pension.textContent = "—";
     resultElements.incomeTax.textContent = "—";
     resultElements.takeHome.textContent = "—";
+    if (summaryEl) summaryEl.classList.remove("is-ready");
   }
 
   /**
@@ -233,6 +227,7 @@
     resultElements.pension.textContent = "-" + formatUSD(results.pension);
     resultElements.incomeTax.textContent = "-" + formatUSD(results.incomeTax);
     resultElements.takeHome.textContent = formatUSD(results.takeHomePay);
+    if (summaryEl) summaryEl.classList.add("is-ready");
   }
 
   /**
