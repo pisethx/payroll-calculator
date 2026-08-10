@@ -18,16 +18,16 @@
   --space-4: 2rem;
   --space-5: 2.75rem;
 
-  --ink: #0f1c1a;
-  --ink-soft: rgba(15, 28, 26, 0.62);
-  --ink-mute: rgba(15, 28, 26, 0.38);
-  --surface: rgba(247, 251, 249, 0.78);
-  --surface-strong: rgba(255, 255, 255, 0.92);
-  --line: rgba(15, 28, 26, 0.08);
-  --line-strong: rgba(15, 28, 26, 0.14);
-  --mint: #1f6b57;
-  --mint-soft: rgba(31, 107, 87, 0.1);
-  --amber: #8a5a12;
+  --ink: #102421;
+  --ink-soft: rgba(16, 36, 33, 0.64);
+  --ink-mute: rgba(16, 36, 33, 0.4);
+  --surface: rgba(248, 252, 250, 0.8);
+  --surface-strong: rgba(255, 255, 255, 0.94);
+  --line: rgba(16, 36, 33, 0.08);
+  --line-strong: rgba(16, 36, 33, 0.14);
+  --mint: #1a6d58;
+  --mint-soft: rgba(26, 109, 88, 0.12);
+  --deduction: #7a5330;
   --error: #a1162f;
   --error-bg: rgba(161, 22, 47, 0.07);
 
@@ -61,7 +61,7 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   background:
-    linear-gradient(165deg, #eef5f2 0%, #f4f1eb 42%, #e7f0ec 100%);
+    linear-gradient(165deg, #e8f3ef 0%, #edf2f0 45%, #e4eeea 100%);
 }
 
 /* Atmosphere
@@ -79,9 +79,9 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(90, 160, 138, 0.28), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 95% 15%, rgba(196, 168, 120, 0.18), transparent 50%),
-    radial-gradient(ellipse 60% 45% at 50% 100%, rgba(47, 110, 92, 0.12), transparent 55%);
+    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(78, 154, 132, 0.3), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 95% 18%, rgba(92, 140, 148, 0.16), transparent 52%),
+    radial-gradient(ellipse 60% 45% at 50% 100%, rgba(40, 108, 90, 0.14), transparent 55%);
   animation: wash-shift 16s var(--ease) infinite alternate;
 }
 
@@ -106,7 +106,7 @@ body {
   height: 320px;
   bottom: -80px;
   left: -70px;
-  background: rgba(180, 150, 100, 0.16);
+  background: rgba(88, 132, 140, 0.14);
   animation-delay: -8s;
 }
 
@@ -404,7 +404,11 @@ input[type="number"].input--error:focus {
 }
 
 .breakdown__row--deduction dd {
-  color: var(--amber);
+  color: var(--deduction);
+}
+
+.summary:not(.is-ready) .breakdown {
+  opacity: 0.45;
 }
 
 @keyframes value-glow {
