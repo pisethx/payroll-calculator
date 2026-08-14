@@ -1,6 +1,5 @@
 /**
- * Payroll Calculator
- * Calculates monthly take-home pay with overtime and Cambodia progressive income tax.
+ * Calculators — payroll take-home, loan amortization, and DSCR coverage.
  */
 
 (function () {
@@ -14,6 +13,7 @@
   const HOURS_PER_DAY = 8;
   const OT_MULTIPLIER = 2; // 200%
   const PENSION_FUND = 6;
+  const DSCR_MULTIPLIER = 1.5;
 
   /** Progressive tax brackets: [width in USD, rate as decimal] */
   const TAX_BRACKETS = [
@@ -24,24 +24,56 @@
   ];
   const TOP_TAX_RATE = 0.2;
 
+  const MODES = {
+    payroll: { title: "Payroll" },
+    loan: { title: "Loan" },
+    dscr: { title: "DSCR" },
+  };
+
   // ---------------------------------------------------------------------------
   // DOM References
   // ---------------------------------------------------------------------------
+
+  const modeSwitcher = document.getElementById("mode-switcher");
+  const modeTrigger = document.getElementById("mode-trigger");
+  const modeMenu = document.getElementById("mode-menu");
+  const modeTitle = document.getElementById("mode-title");
+  const modeOptions = modeMenu.querySelectorAll("[data-mode]");
+  const modePanels = document.querySelectorAll("[data-mode-panel]");
 
   const baseSalaryInput = document.getElementById("base-salary");
   const otHoursInput = document.getElementById("ot-hours");
   const baseSalaryError = document.getElementById("base-salary-error");
   const otHoursError = document.getElementById("ot-hours-error");
 
+  const loanAmountInput = document.getElementById("loan-amount");
+  const loanTenureInput = document.getElementById("loan-tenure");
+  const loanInterestInput = document.getElementById("loan-interest");
+  const loanAmountError = document.getElementById("loan-amount-error");
+  const loanTenureError = document.getElementById("loan-tenure-error");
+  const loanInterestError = document.getElementById("loan-interest-error");
+
+  const dscrLoanPaymentInput = document.getElementById("dscr-loan-payment");
+  const dscrExpenseInput = document.getElementById("dscr-expense");
+  const dscrLoanPaymentError = document.getElementById("dscr-loan-payment-error");
+  const dscrExpenseError = document.getElementById("dscr-expense-error");
+
   /** Track whether the user has interacted with each field */
   const touched = {
     baseSalary: false,
     otHours: false,
+    loanAmount: false,
+    loanTenure: false,
+    loanInterest: false,
+    dscrLoanPayment: false,
+    dscrExpense: false,
   };
 
-  const summaryEl = document.querySelector(".summary");
+  const payrollSummary = document.querySelector('[data-mode-panel="payroll"] .summary');
+  const loanSummary = document.querySelector('[data-mode-panel="loan"] .summary');
+  const dscrSummary = document.querySelector('[data-mode-panel="dscr"] .summary');
 
-  const resultElements = {
+  const payrollResults = {
     baseSalary: document.getElementById("result-base-salary"),
     dailyRate: document.getElementById("result-daily-rate"),
     hourlyRate: document.getElementById("result-hourly-rate"),
@@ -52,23 +84,162 @@
     takeHome: document.getElementById("result-take-home"),
   };
 
+  const loanResults = {
+    amount: document.getElementById("result-loan-amount"),
+    tenure: document.getElementById("result-loan-tenure"),
+    interest: document.getElementById("result-loan-interest"),
+    total: document.getElementById("result-loan-total"),
+    interestPaid: document.getElementById("result-loan-interest-paid"),
+    payment: document.getElementById("result-loan-payment"),
+  };
+
+  const dscrResults = {
+    loanPayment: document.getElementById("result-dscr-loan-payment"),
+    expense: document.getElementById("result-dscr-expense"),
+    combined: document.getElementById("result-dscr-combined"),
+    value: document.getElementById("result-dscr-value"),
+  };
+
+  let currentMode = "payroll";
+
+  const MODE_STORAGE_KEY = "payroll-calculator:mode";
+  const INPUTS_STORAGE_KEY = "payroll-calculator:inputs";
+
+  const persistableInputs = {
+    baseSalary: baseSalaryInput,
+    otHours: otHoursInput,
+    loanAmount: loanAmountInput,
+    loanTenure: loanTenureInput,
+    loanInterest: loanInterestInput,
+    dscrLoanPayment: dscrLoanPaymentInput,
+    dscrExpense: dscrExpenseInput,
+  };
+
+  // ---------------------------------------------------------------------------
+  // Persistence
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @param {string} mode
+   */
+  function saveMode(mode) {
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, mode);
+    } catch (err) {
+      /* storage may be unavailable */
+    }
+  }
+
+  /**
+   * @returns {string | null}
+   */
+  function readSavedMode() {
+    try {
+      const mode = localStorage.getItem(MODE_STORAGE_KEY);
+      return mode && MODES[mode] ? mode : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function saveInputs() {
+    try {
+      const data = {};
+      Object.keys(persistableInputs).forEach(function (key) {
+        data[key] = persistableInputs[key].value;
+      });
+      sessionStorage.setItem(INPUTS_STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      /* storage may be unavailable */
+    }
+  }
+
+  function restoreInputs() {
+    try {
+      const raw = sessionStorage.getItem(INPUTS_STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      Object.keys(persistableInputs).forEach(function (key) {
+        if (typeof data[key] !== "string") return;
+        persistableInputs[key].value = data[key];
+        if (data[key].trim() !== "") {
+          touched[key] = true;
+        }
+      });
+    } catch (err) {
+      /* ignore malformed session data */
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Formatting
   // ---------------------------------------------------------------------------
 
   /**
    * Format a number as USD currency with 2 decimal places.
+   * Negative values render as -$1.00.
    * @param {number} value
    * @returns {string}
    */
   function formatUSD(value) {
-    return (
+    const formatted =
       "$" +
-      value.toLocaleString("en-US", {
+      Math.abs(value).toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      })
-    );
+      });
+    return value < 0 ? "-" + formatted : formatted;
+  }
+
+  /**
+   * Set an element's text and mark it red when the amount is negative.
+   * @param {HTMLElement} el
+   * @param {string} text
+   * @param {boolean} [negative]
+   */
+  function setText(el, text, negative) {
+    el.textContent = text;
+    el.classList.toggle("is-negative", Boolean(negative));
+  }
+
+  /**
+   * @param {HTMLElement} el
+   * @param {number} value
+   */
+  function setUSD(el, value) {
+    setText(el, formatUSD(value), value < 0);
+  }
+
+  /**
+   * @param {HTMLElement} el
+   */
+  function clearText(el) {
+    setText(el, "—", false);
+  }
+
+  /**
+   * Format a percentage, showing decimals only when needed.
+   * @param {number} value
+   * @returns {string}
+   */
+  function formatPercent(value) {
+    const formatted = value % 1 === 0 ? String(value) : value.toFixed(2);
+    return formatted + "%";
+  }
+
+  /**
+   * Format tenure in months for display.
+   * @param {number} months
+   * @returns {string}
+   */
+  function formatTenure(months) {
+    const formatted = months % 1 === 0 ? String(months) : months.toFixed(2);
+    return formatted + (months === 1 ? " month" : " months");
+  }
+
+  function setSummaryReady(summaryEl, ready) {
+    if (!summaryEl) return;
+    summaryEl.classList.toggle("is-ready", ready);
   }
 
   // ---------------------------------------------------------------------------
@@ -133,6 +304,61 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Loan Calculation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Calculate a standard amortizing loan payment.
+   * @param {number} principal
+   * @param {number} tenureMonths
+   * @param {number} annualRatePercent
+   * @returns {object}
+   */
+  function calculateLoan(principal, tenureMonths, annualRatePercent) {
+    const monthlyRate = annualRatePercent / 100 / 12;
+
+    let monthlyPayment;
+    if (monthlyRate === 0) {
+      monthlyPayment = principal / tenureMonths;
+    } else {
+      const factor = Math.pow(1 + monthlyRate, tenureMonths);
+      monthlyPayment = (principal * (monthlyRate * factor)) / (factor - 1);
+    }
+
+    const totalPayable = monthlyPayment * tenureMonths;
+    const totalInterest = totalPayable - principal;
+
+    return {
+      principal,
+      tenureMonths,
+      annualRatePercent,
+      monthlyPayment,
+      totalPayable,
+      totalInterest,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // DSCR Calculation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * DSCR = (Monthly Loan Payment + Monthly Expense) * 1.5
+   * @param {number} monthlyLoanPayment
+   * @param {number} monthlyExpense
+   * @returns {object}
+   */
+  function calculateDscr(monthlyLoanPayment, monthlyExpense) {
+    const combined = monthlyLoanPayment + monthlyExpense;
+    return {
+      monthlyLoanPayment,
+      monthlyExpense,
+      combined,
+      dscr: combined * DSCR_MULTIPLIER,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Validation
   // ---------------------------------------------------------------------------
 
@@ -144,7 +370,14 @@
    * @returns {{ valid: boolean, value: number | null }}
    */
   function validateInput(input, errorEl, options) {
-    const { label, required, showRequiredError, emptyAsDefault, defaultValue } = options;
+    const {
+      label,
+      required,
+      showRequiredError,
+      emptyAsDefault,
+      defaultValue,
+      minExclusive,
+    } = options;
     const raw = input.value.trim();
 
     input.classList.remove("input--error");
@@ -176,6 +409,11 @@
       return { valid: false, value: null };
     }
 
+    if (minExclusive != null && value <= minExclusive) {
+      showError(input, errorEl, `${label} must be greater than ${minExclusive}.`);
+      return { valid: false, value: null };
+    }
+
     return { valid: true, value };
   }
 
@@ -194,46 +432,37 @@
   }
 
   // ---------------------------------------------------------------------------
-  // UI Updates
+  // Payroll UI
   // ---------------------------------------------------------------------------
 
-  /**
-   * Reset all result fields to placeholder state.
-   */
-  function clearResults() {
-    resultElements.baseSalary.textContent = "—";
-    resultElements.dailyRate.textContent = "—";
-    resultElements.hourlyRate.textContent = "—";
-    resultElements.otPay.textContent = "—";
-    resultElements.earningsBeforeTax.textContent = "—";
-    resultElements.pension.textContent = "—";
-    resultElements.incomeTax.textContent = "—";
-    resultElements.takeHome.textContent = "—";
-    if (summaryEl) summaryEl.classList.remove("is-ready");
+  function clearPayrollResults() {
+    clearText(payrollResults.baseSalary);
+    clearText(payrollResults.dailyRate);
+    clearText(payrollResults.hourlyRate);
+    clearText(payrollResults.otPay);
+    clearText(payrollResults.earningsBeforeTax);
+    clearText(payrollResults.pension);
+    clearText(payrollResults.incomeTax);
+    clearText(payrollResults.takeHome);
+    setSummaryReady(payrollSummary, false);
   }
 
   /**
-   * Render calculated payroll results to the DOM.
    * @param {object} results
    */
-  function displayResults(results) {
-    resultElements.baseSalary.textContent = formatUSD(results.baseSalary);
-    resultElements.dailyRate.textContent = formatUSD(results.dailyRate);
-    resultElements.hourlyRate.textContent = formatUSD(results.hourlyRate);
-    resultElements.otPay.textContent = formatUSD(results.otPay);
-    resultElements.earningsBeforeTax.textContent = formatUSD(
-      results.earningsBeforeTax
-    );
-    resultElements.pension.textContent = "-" + formatUSD(results.pension);
-    resultElements.incomeTax.textContent = "-" + formatUSD(results.incomeTax);
-    resultElements.takeHome.textContent = formatUSD(results.takeHomePay);
-    if (summaryEl) summaryEl.classList.add("is-ready");
+  function displayPayrollResults(results) {
+    setUSD(payrollResults.baseSalary, results.baseSalary);
+    setUSD(payrollResults.dailyRate, results.dailyRate);
+    setUSD(payrollResults.hourlyRate, results.hourlyRate);
+    setUSD(payrollResults.otPay, results.otPay);
+    setUSD(payrollResults.earningsBeforeTax, results.earningsBeforeTax);
+    setUSD(payrollResults.pension, -results.pension);
+    setUSD(payrollResults.incomeTax, -results.incomeTax);
+    setUSD(payrollResults.takeHome, results.takeHomePay);
+    setSummaryReady(payrollSummary, true);
   }
 
-  /**
-   * Validate inputs and recalculate payroll on every change.
-   */
-  function handleInputChange() {
+  function handlePayrollChange() {
     const salaryResult = validateInput(baseSalaryInput, baseSalaryError, {
       label: "Base salary",
       required: true,
@@ -249,31 +478,242 @@
     });
 
     if (!salaryResult.valid || !otResult.valid) {
-      clearResults();
+      clearPayrollResults();
       return;
     }
 
-    const payroll = calculatePayroll(salaryResult.value, otResult.value);
-    displayResults(payroll);
+    displayPayrollResults(calculatePayroll(salaryResult.value, otResult.value));
   }
+
+  // ---------------------------------------------------------------------------
+  // Loan UI
+  // ---------------------------------------------------------------------------
+
+  function clearLoanResults() {
+    clearText(loanResults.amount);
+    clearText(loanResults.tenure);
+    clearText(loanResults.interest);
+    clearText(loanResults.total);
+    clearText(loanResults.interestPaid);
+    clearText(loanResults.payment);
+    setSummaryReady(loanSummary, false);
+  }
+
+  /**
+   * @param {object} results
+   */
+  function displayLoanResults(results) {
+    setUSD(loanResults.amount, results.principal);
+    setText(loanResults.tenure, formatTenure(results.tenureMonths));
+    setText(loanResults.interest, formatPercent(results.annualRatePercent));
+    setUSD(loanResults.total, results.totalPayable);
+    setUSD(loanResults.interestPaid, results.totalInterest);
+    setUSD(loanResults.payment, results.monthlyPayment);
+    setSummaryReady(loanSummary, true);
+  }
+
+  function handleLoanChange() {
+    const amountResult = validateInput(loanAmountInput, loanAmountError, {
+      label: "Loan amount",
+      required: true,
+      showRequiredError: touched.loanAmount,
+    });
+
+    const tenureResult = validateInput(loanTenureInput, loanTenureError, {
+      label: "Tenure",
+      required: true,
+      showRequiredError: touched.loanTenure,
+      minExclusive: 0,
+    });
+
+    const interestResult = validateInput(loanInterestInput, loanInterestError, {
+      label: "Interest",
+      required: true,
+      showRequiredError: touched.loanInterest,
+    });
+
+    if (!amountResult.valid || !tenureResult.valid || !interestResult.valid) {
+      clearLoanResults();
+      return;
+    }
+
+    displayLoanResults(
+      calculateLoan(amountResult.value, tenureResult.value, interestResult.value)
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // DSCR UI
+  // ---------------------------------------------------------------------------
+
+  function clearDscrResults() {
+    clearText(dscrResults.loanPayment);
+    clearText(dscrResults.expense);
+    clearText(dscrResults.combined);
+    clearText(dscrResults.value);
+    setSummaryReady(dscrSummary, false);
+  }
+
+  /**
+   * @param {object} results
+   */
+  function displayDscrResults(results) {
+    setUSD(dscrResults.loanPayment, results.monthlyLoanPayment);
+    setUSD(dscrResults.expense, results.monthlyExpense);
+    setUSD(dscrResults.combined, results.combined);
+    setUSD(dscrResults.value, results.dscr);
+    setSummaryReady(dscrSummary, true);
+  }
+
+  function handleDscrChange() {
+    const paymentResult = validateInput(
+      dscrLoanPaymentInput,
+      dscrLoanPaymentError,
+      {
+        label: "Monthly Loan Repayment",
+        required: true,
+        showRequiredError: touched.dscrLoanPayment,
+      }
+    );
+
+    const expenseResult = validateInput(dscrExpenseInput, dscrExpenseError, {
+      label: "Monthly Expense",
+      required: true,
+      showRequiredError: touched.dscrExpense,
+    });
+
+    if (!paymentResult.valid || !expenseResult.valid) {
+      clearDscrResults();
+      return;
+    }
+
+    displayDscrResults(calculateDscr(paymentResult.value, expenseResult.value));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mode Switcher
+  // ---------------------------------------------------------------------------
+
+  function isMenuOpen() {
+    return !modeMenu.hidden;
+  }
+
+  function openMenu() {
+    modeMenu.hidden = false;
+    modeSwitcher.classList.add("is-open");
+    modeTrigger.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMenu() {
+    modeMenu.hidden = true;
+    modeSwitcher.classList.remove("is-open");
+    modeTrigger.setAttribute("aria-expanded", "false");
+  }
+
+  function toggleMenu() {
+    if (isMenuOpen()) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  }
+
+  /**
+   * @param {string} mode
+   * @param {{ persist?: boolean }} [options]
+   */
+  function setMode(mode, options) {
+    if (!MODES[mode] || mode === currentMode) {
+      closeMenu();
+      return;
+    }
+
+    currentMode = mode;
+    const config = MODES[mode];
+
+    modeTitle.textContent = config.title;
+    document.title = config.title;
+
+    modeOptions.forEach(function (option) {
+      if (option.getAttribute("data-mode") === mode) {
+        option.setAttribute("aria-current", "true");
+      } else {
+        option.removeAttribute("aria-current");
+      }
+    });
+
+    modePanels.forEach(function (panel) {
+      panel.hidden = panel.getAttribute("data-mode-panel") !== mode;
+    });
+
+    if (!options || options.persist !== false) {
+      saveMode(mode);
+    }
+
+    closeMenu();
+  }
+
+  modeTrigger.addEventListener("click", function (e) {
+    e.stopPropagation();
+    toggleMenu();
+  });
+
+  modeOptions.forEach(function (option) {
+    option.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setMode(option.getAttribute("data-mode"));
+    });
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!isMenuOpen()) return;
+    if (!modeSwitcher.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && isMenuOpen()) {
+      closeMenu();
+      modeTrigger.focus();
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Initialization
   // ---------------------------------------------------------------------------
 
-  function markTouched(field) {
+  function markTouched(field, handler) {
     return function () {
       touched[field] = true;
-      handleInputChange();
+      handler();
+      saveInputs();
     };
   }
 
-  baseSalaryInput.addEventListener("input", markTouched("baseSalary"));
-  otHoursInput.addEventListener("input", markTouched("otHours"));
-  baseSalaryInput.addEventListener("blur", markTouched("baseSalary"));
-  otHoursInput.addEventListener("blur", markTouched("otHours"));
+  baseSalaryInput.addEventListener("input", markTouched("baseSalary", handlePayrollChange));
+  otHoursInput.addEventListener("input", markTouched("otHours", handlePayrollChange));
+  baseSalaryInput.addEventListener("blur", markTouched("baseSalary", handlePayrollChange));
+  otHoursInput.addEventListener("blur", markTouched("otHours", handlePayrollChange));
 
-  // Progressive enhancement: show install button only when install prompt is available.
+  loanAmountInput.addEventListener("input", markTouched("loanAmount", handleLoanChange));
+  loanTenureInput.addEventListener("input", markTouched("loanTenure", handleLoanChange));
+  loanInterestInput.addEventListener("input", markTouched("loanInterest", handleLoanChange));
+  loanAmountInput.addEventListener("blur", markTouched("loanAmount", handleLoanChange));
+  loanTenureInput.addEventListener("blur", markTouched("loanTenure", handleLoanChange));
+  loanInterestInput.addEventListener("blur", markTouched("loanInterest", handleLoanChange));
+
+  dscrLoanPaymentInput.addEventListener(
+    "input",
+    markTouched("dscrLoanPayment", handleDscrChange)
+  );
+  dscrExpenseInput.addEventListener("input", markTouched("dscrExpense", handleDscrChange));
+  dscrLoanPaymentInput.addEventListener(
+    "blur",
+    markTouched("dscrLoanPayment", handleDscrChange)
+  );
+  dscrExpenseInput.addEventListener("blur", markTouched("dscrExpense", handleDscrChange));
+
   let deferredInstallPrompt = null;
   const installButton = document.getElementById("install-app");
   if (installButton) {
@@ -297,8 +737,22 @@
     });
   }
 
-  // Prevent form submission (calculations are automatic)
   document.getElementById("payroll-form").addEventListener("submit", function (e) {
     e.preventDefault();
   });
+  document.getElementById("loan-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+  });
+  document.getElementById("dscr-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+  });
+
+  restoreInputs();
+  const savedMode = readSavedMode();
+  if (savedMode) {
+    setMode(savedMode, { persist: false });
+  }
+  handlePayrollChange();
+  handleLoanChange();
+  handleDscrChange();
 })();

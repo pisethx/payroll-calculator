@@ -4,11 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Calculate monthly take-home pay with overtime and Cambodia income tax.">
-  <meta name="theme-color" content="#102421">
+  <meta name="description" content="Calculate payroll, loan payments, and DSCR coverage.">
+  <meta name="theme-color" content="#e8f3ef">
+  <meta name="color-scheme" content="light">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Payroll">
   <title>Payroll</title>
   <link rel="manifest" href="manifest.webmanifest">
@@ -29,13 +30,42 @@
 
   <div class="app">
     <header class="header">
-      <h1 class="brand">Payroll</h1>
+      <div class="mode-switcher" id="mode-switcher">
+        <h1 class="brand">
+          <button type="button" class="mode-switcher__trigger" id="mode-trigger" aria-haspopup="menu"
+            aria-expanded="false" aria-controls="mode-menu">
+            <span id="mode-title">Payroll</span>
+            <svg class="mode-switcher__chevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd"
+                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                clip-rule="evenodd" />
+            </svg>
+          </button>
+        </h1>
+        <ul class="mode-switcher__menu" id="mode-menu" role="menu" aria-labelledby="mode-trigger" hidden>
+          <li role="none">
+            <button type="button" class="mode-switcher__option" role="menuitem" data-mode="payroll" aria-current="true">
+              Payroll
+            </button>
+          </li>
+          <li role="none">
+            <button type="button" class="mode-switcher__option" role="menuitem" data-mode="loan">
+              Loan
+            </button>
+          </li>
+          <li role="none">
+            <button type="button" class="mode-switcher__option" role="menuitem" data-mode="dscr">
+              DSCR
+            </button>
+          </li>
+        </ul>
+      </div>
       <button id="install-app" class="install-button" type="button" hidden>
         Install
       </button>
     </header>
 
-    <main class="panel">
+    <div class="panel mode-panel" data-mode-panel="payroll">
       <form id="payroll-form" class="inputs" novalidate aria-label="Salary inputs">
         <div class="field">
           <label for="base-salary">Base salary</label>
@@ -96,7 +126,120 @@
           </div>
         </dl>
       </section>
-    </main>
+    </div>
+
+    <div class="panel mode-panel" data-mode-panel="loan" hidden>
+      <form id="loan-form" class="inputs inputs--three" novalidate aria-label="Loan inputs">
+        <div class="field">
+          <label for="loan-amount">Loan amount</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input type="number" id="loan-amount" name="loanAmount" min="0" step="0.01" placeholder="0.00" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="loan-amount-error">
+          </div>
+          <p id="loan-amount-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="loan-tenure">Tenure (months)</label>
+          <div class="input-shell">
+            <input type="number" id="loan-tenure" name="loanTenure" min="0" step="1" placeholder="0" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="loan-tenure-error">
+          </div>
+          <p id="loan-tenure-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="loan-interest">Interest (%)</label>
+          <div class="input-shell">
+            <input type="number" id="loan-interest" name="loanInterest" min="0" step="0.01" placeholder="0" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="loan-interest-error">
+          </div>
+          <p id="loan-interest-error" class="error-message" role="alert" hidden></p>
+        </div>
+      </form>
+
+      <section class="summary" aria-labelledby="loan-payment-label" aria-live="polite">
+        <div class="take-home">
+          <span id="loan-payment-label" class="take-home__label">Monthly payment</span>
+          <span id="result-loan-payment" class="take-home__value">—</span>
+        </div>
+
+        <dl class="breakdown">
+          <div class="breakdown__row">
+            <dt>Amount</dt>
+            <dd id="result-loan-amount">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt>Tenure</dt>
+            <dd id="result-loan-tenure">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt>Interest</dt>
+            <dd id="result-loan-interest">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--total">
+            <dt>Total Payback</dt>
+            <dd id="result-loan-total">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--deduction">
+            <dt>Total Interest</dt>
+            <dd id="result-loan-interest-paid">—</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    <div class="panel mode-panel" data-mode-panel="dscr" hidden>
+      <form id="dscr-form" class="inputs inputs--stack" novalidate aria-label="DSCR inputs">
+        <div class="field">
+          <label for="dscr-loan-payment">Monthly Loan Repayment</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input type="number" id="dscr-loan-payment" name="dscrLoanPayment" min="0" step="0.01" placeholder="0.00"
+              required inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="dscr-loan-payment-error">
+          </div>
+          <p id="dscr-loan-payment-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="dscr-expense">Monthly Expense</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input type="number" id="dscr-expense" name="dscrExpense" min="0" step="0.01" placeholder="0.00" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="dscr-expense-error">
+          </div>
+          <p id="dscr-expense-error" class="error-message" role="alert" hidden></p>
+        </div>
+      </form>
+
+      <section class="summary" aria-labelledby="dscr-value-label" aria-live="polite">
+        <div class="take-home">
+          <span id="dscr-value-label" class="take-home__label">DSCR × 1.5</span>
+          <span id="result-dscr-value" class="take-home__value">—</span>
+        </div>
+
+        <dl class="breakdown">
+          <div class="breakdown__row">
+            <dt>Monthly Loan Repayment</dt>
+            <dd id="result-dscr-loan-payment">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt>Monthly Expense</dt>
+            <dd id="result-dscr-expense">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--total">
+            <dt>Combined</dt>
+            <dd id="result-dscr-combined">—</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
   </div>
 
   <script src="app.js"></script>
