@@ -27,6 +27,8 @@
   --line-strong: rgba(16, 36, 33, 0.14);
   --mint: #1a6d58;
   --mint-soft: rgba(26, 109, 88, 0.12);
+  --success: #1a6d58;
+  --warning: #9a6700;
   --error: #a1162f;
   --error-bg: rgba(161, 22, 47, 0.07);
 
@@ -461,6 +463,18 @@ input[type="number"].input--error:focus {
 
 .take-home__value.is-negative,
 .summary.is-ready .take-home__value.is-negative {
+  color: var(--error);
+}
+
+.summary.is-ready .take-home__value.is-success {
+  color: var(--success);
+}
+
+.summary.is-ready .take-home__value.is-warning {
+  color: var(--warning);
+}
+
+.summary.is-ready .take-home__value.is-error {
   color: var(--error);
 }
 
