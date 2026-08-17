@@ -196,6 +196,28 @@
     <div class="panel mode-panel" data-mode-panel="dscr" hidden>
       <form id="dscr-form" class="inputs inputs--stack" novalidate aria-label="DSCR inputs">
         <div class="field">
+          <label for="dscr-income">Monthly Income</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input type="number" id="dscr-income" name="dscrIncome" min="0" step="0.01" placeholder="0.00" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="dscr-income-error">
+          </div>
+          <p id="dscr-income-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="dscr-expense">Monthly Expense</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input type="number" id="dscr-expense" name="dscrExpense" min="0" step="0.01" placeholder="0.00"
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="dscr-expense-error">
+          </div>
+          <p id="dscr-expense-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
           <label for="dscr-loan-payment">Monthly Loan Repayment</label>
           <div class="input-shell">
             <span class="input-prefix" aria-hidden="true">$</span>
@@ -207,35 +229,31 @@
         </div>
 
         <div class="field">
-          <label for="dscr-expense">Monthly Expense</label>
+          <label for="dscr-debt">Debt</label>
           <div class="input-shell">
             <span class="input-prefix" aria-hidden="true">$</span>
-            <input type="number" id="dscr-expense" name="dscrExpense" min="0" step="0.01" placeholder="0.00" required
+            <input type="number" id="dscr-debt" name="dscrDebt" min="0" step="0.01" placeholder="0.00"
               inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
-              aria-describedby="dscr-expense-error">
+              aria-describedby="dscr-debt-error">
           </div>
-          <p id="dscr-expense-error" class="error-message" role="alert" hidden></p>
+          <p id="dscr-debt-error" class="error-message" role="alert" hidden></p>
         </div>
       </form>
 
       <section class="summary" aria-labelledby="dscr-value-label" aria-live="polite">
         <div class="take-home">
-          <span id="dscr-value-label" class="take-home__label">DSCR × 1.5</span>
+          <span id="dscr-value-label" class="take-home__label">DSCR</span>
           <span id="result-dscr-value" class="take-home__value">—</span>
         </div>
 
         <dl class="breakdown">
           <div class="breakdown__row">
-            <dt>Monthly Loan Repayment</dt>
-            <dd id="result-dscr-loan-payment">—</dd>
-          </div>
-          <div class="breakdown__row">
-            <dt>Monthly Expense</dt>
-            <dd id="result-dscr-expense">—</dd>
+            <dt>Net Income</dt>
+            <dd id="result-dscr-net-income">—</dd>
           </div>
           <div class="breakdown__row breakdown__row--total">
-            <dt>Combined</dt>
-            <dd id="result-dscr-combined">—</dd>
+            <dt>Total Debt Service</dt>
+            <dd id="result-dscr-debt-service">—</dd>
           </div>
         </dl>
       </section>

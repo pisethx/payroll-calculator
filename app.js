@@ -13,7 +13,6 @@
   const HOURS_PER_DAY = 8;
   const OT_MULTIPLIER = 2; // 200%
   const PENSION_FUND = 6;
-  const DSCR_MULTIPLIER = 1.5;
 
   /** Progressive tax brackets: [width in USD, rate as decimal] */
   const TAX_BRACKETS = [
@@ -53,10 +52,14 @@
   const loanTenureError = document.getElementById("loan-tenure-error");
   const loanInterestError = document.getElementById("loan-interest-error");
 
-  const dscrLoanPaymentInput = document.getElementById("dscr-loan-payment");
+  const dscrIncomeInput = document.getElementById("dscr-income");
   const dscrExpenseInput = document.getElementById("dscr-expense");
-  const dscrLoanPaymentError = document.getElementById("dscr-loan-payment-error");
+  const dscrLoanPaymentInput = document.getElementById("dscr-loan-payment");
+  const dscrDebtInput = document.getElementById("dscr-debt");
+  const dscrIncomeError = document.getElementById("dscr-income-error");
   const dscrExpenseError = document.getElementById("dscr-expense-error");
+  const dscrLoanPaymentError = document.getElementById("dscr-loan-payment-error");
+  const dscrDebtError = document.getElementById("dscr-debt-error");
 
   /** Track whether the user has interacted with each field */
   const touched = {
@@ -65,8 +68,10 @@
     loanAmount: false,
     loanTenure: false,
     loanInterest: false,
-    dscrLoanPayment: false,
+    dscrIncome: false,
     dscrExpense: false,
+    dscrLoanPayment: false,
+    dscrDebt: false,
   };
 
   const payrollSummary = document.querySelector('[data-mode-panel="payroll"] .summary');
@@ -94,9 +99,8 @@
   };
 
   const dscrResults = {
-    loanPayment: document.getElementById("result-dscr-loan-payment"),
-    expense: document.getElementById("result-dscr-expense"),
-    combined: document.getElementById("result-dscr-combined"),
+    netIncome: document.getElementById("result-dscr-net-income"),
+    debtService: document.getElementById("result-dscr-debt-service"),
     value: document.getElementById("result-dscr-value"),
   };
 
@@ -111,8 +115,10 @@
     loanAmount: loanAmountInput,
     loanTenure: loanTenureInput,
     loanInterest: loanInterestInput,
-    dscrLoanPayment: dscrLoanPaymentInput,
+    dscrIncome: dscrIncomeInput,
     dscrExpense: dscrExpenseInput,
+    dscrLoanPayment: dscrLoanPaymentInput,
+    dscrDebt: dscrDebtInput,
   };
 
   // ---------------------------------------------------------------------------
@@ -237,6 +243,43 @@
     return formatted + (months === 1 ? " month" : " months");
   }
 
+  /**
+   * Format a DSCR ratio for display.
+   * @param {number} value
+   * @returns {string}
+   */
+  function formatDscr(value) {
+    return value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  /**
+   * @param {HTMLElement} el
+   * @param {number} dscr
+   */
+  function setDscrValue(el, dscr) {
+    el.textContent = formatDscr(dscr);
+    el.classList.remove("is-negative", "is-success", "is-warning", "is-error");
+
+    if (dscr > 2) {
+      el.classList.add("is-success");
+    } else if (dscr >= 1.5) {
+      el.classList.add("is-warning");
+    } else {
+      el.classList.add("is-error");
+    }
+  }
+
+  /**
+   * @param {HTMLElement} el
+   */
+  function clearDscrValue(el) {
+    el.textContent = "—";
+    el.classList.remove("is-negative", "is-success", "is-warning", "is-error");
+  }
+
   function setSummaryReady(summaryEl, ready) {
     if (!summaryEl) return;
     summaryEl.classList.toggle("is-ready", ready);
@@ -343,18 +386,22 @@
   // ---------------------------------------------------------------------------
 
   /**
-   * DSCR = (Monthly Loan Payment + Monthly Expense) * 1.5
-   * @param {number} monthlyLoanPayment
+   * DSCR = (Monthly Income - Monthly Expense) / (Monthly Loan Repayment + Debt)
+   * @param {number} monthlyIncome
    * @param {number} monthlyExpense
+   * @param {number} monthlyLoanPayment
+   * @param {number} debt
    * @returns {object}
    */
-  function calculateDscr(monthlyLoanPayment, monthlyExpense) {
-    const combined = monthlyLoanPayment + monthlyExpense;
+  function calculateDscr(monthlyIncome, monthlyExpense, monthlyLoanPayment, debt) {
+    const netIncome = monthlyIncome - monthlyExpense;
+    const totalDebtService = monthlyLoanPayment + debt;
+    const dscr = totalDebtService > 0 ? netIncome / totalDebtService : null;
+
     return {
-      monthlyLoanPayment,
-      monthlyExpense,
-      combined,
-      dscr: combined * DSCR_MULTIPLIER,
+      netIncome,
+      totalDebtService,
+      dscr,
     };
   }
 
@@ -547,10 +594,9 @@
   // ---------------------------------------------------------------------------
 
   function clearDscrResults() {
-    clearText(dscrResults.loanPayment);
-    clearText(dscrResults.expense);
-    clearText(dscrResults.combined);
-    clearText(dscrResults.value);
+    clearText(dscrResults.netIncome);
+    clearText(dscrResults.debtService);
+    clearDscrValue(dscrResults.value);
     setSummaryReady(dscrSummary, false);
   }
 
@@ -558,14 +604,27 @@
    * @param {object} results
    */
   function displayDscrResults(results) {
-    setUSD(dscrResults.loanPayment, results.monthlyLoanPayment);
-    setUSD(dscrResults.expense, results.monthlyExpense);
-    setUSD(dscrResults.combined, results.combined);
-    setUSD(dscrResults.value, results.dscr);
+    setUSD(dscrResults.netIncome, results.netIncome);
+    setUSD(dscrResults.debtService, results.totalDebtService);
+    setDscrValue(dscrResults.value, results.dscr);
     setSummaryReady(dscrSummary, true);
   }
 
   function handleDscrChange() {
+    const incomeResult = validateInput(dscrIncomeInput, dscrIncomeError, {
+      label: "Monthly Income",
+      required: true,
+      showRequiredError: touched.dscrIncome,
+    });
+
+    const expenseResult = validateInput(dscrExpenseInput, dscrExpenseError, {
+      label: "Monthly Expense",
+      required: false,
+      showRequiredError: false,
+      emptyAsDefault: true,
+      defaultValue: 0,
+    });
+
     const paymentResult = validateInput(
       dscrLoanPaymentInput,
       dscrLoanPaymentError,
@@ -576,18 +635,42 @@
       }
     );
 
-    const expenseResult = validateInput(dscrExpenseInput, dscrExpenseError, {
-      label: "Monthly Expense",
-      required: true,
-      showRequiredError: touched.dscrExpense,
+    const debtResult = validateInput(dscrDebtInput, dscrDebtError, {
+      label: "Debt",
+      required: false,
+      showRequiredError: false,
+      emptyAsDefault: true,
+      defaultValue: 0,
     });
 
-    if (!paymentResult.valid || !expenseResult.valid) {
+    if (
+      !incomeResult.valid ||
+      !expenseResult.valid ||
+      !paymentResult.valid ||
+      !debtResult.valid
+    ) {
       clearDscrResults();
       return;
     }
 
-    displayDscrResults(calculateDscr(paymentResult.value, expenseResult.value));
+    const results = calculateDscr(
+      incomeResult.value,
+      expenseResult.value,
+      paymentResult.value,
+      debtResult.value
+    );
+
+    if (results.dscr == null) {
+      showError(
+        dscrLoanPaymentInput,
+        dscrLoanPaymentError,
+        "Monthly Loan Repayment plus Debt must be greater than 0."
+      );
+      clearDscrResults();
+      return;
+    }
+
+    displayDscrResults(results);
   }
 
   // ---------------------------------------------------------------------------
@@ -703,16 +786,20 @@
   loanTenureInput.addEventListener("blur", markTouched("loanTenure", handleLoanChange));
   loanInterestInput.addEventListener("blur", markTouched("loanInterest", handleLoanChange));
 
+  dscrIncomeInput.addEventListener("input", markTouched("dscrIncome", handleDscrChange));
+  dscrExpenseInput.addEventListener("input", markTouched("dscrExpense", handleDscrChange));
   dscrLoanPaymentInput.addEventListener(
     "input",
     markTouched("dscrLoanPayment", handleDscrChange)
   );
-  dscrExpenseInput.addEventListener("input", markTouched("dscrExpense", handleDscrChange));
+  dscrDebtInput.addEventListener("input", markTouched("dscrDebt", handleDscrChange));
+  dscrIncomeInput.addEventListener("blur", markTouched("dscrIncome", handleDscrChange));
+  dscrExpenseInput.addEventListener("blur", markTouched("dscrExpense", handleDscrChange));
   dscrLoanPaymentInput.addEventListener(
     "blur",
     markTouched("dscrLoanPayment", handleDscrChange)
   );
-  dscrExpenseInput.addEventListener("blur", markTouched("dscrExpense", handleDscrChange));
+  dscrDebtInput.addEventListener("blur", markTouched("dscrDebt", handleDscrChange));
 
   let deferredInstallPrompt = null;
   const installButton = document.getElementById("install-app");
