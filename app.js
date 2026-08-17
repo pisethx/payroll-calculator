@@ -610,13 +610,40 @@
     setSummaryReady(dscrSummary, true);
   }
 
-  function handleDscrChange() {
-    const incomeResult = validateInput(dscrIncomeInput, dscrIncomeError, {
-      label: "Monthly Income",
-      required: true,
-      showRequiredError: touched.dscrIncome,
+  /**
+   * Read a required DSCR amount once both required fields may be filled.
+   * @param {HTMLInputElement} input
+   * @param {HTMLElement} errorEl
+   * @param {string} label
+   * @param {boolean} showRequiredError
+   * @returns {number | null}
+   */
+  function readRequiredDscrAmount(input, errorEl, label, showRequiredError) {
+    const raw = input.value.trim();
+
+    input.classList.remove("input--error");
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    }
+
+    if (raw === "") {
+      if (showRequiredError) {
+        showError(input, errorEl, `${label} is required.`);
+      }
+      return null;
+    }
+
+    const result = validateInput(input, errorEl, {
+      label,
+      required: false,
+      showRequiredError: false,
     });
 
+    return result.valid ? result.value : null;
+  }
+
+  function handleDscrChange() {
     const expenseResult = validateInput(dscrExpenseInput, dscrExpenseError, {
       label: "Monthly Expense",
       required: false,
@@ -624,16 +651,6 @@
       emptyAsDefault: true,
       defaultValue: 0,
     });
-
-    const paymentResult = validateInput(
-      dscrLoanPaymentInput,
-      dscrLoanPaymentError,
-      {
-        label: "Monthly Loan Repayment",
-        required: true,
-        showRequiredError: touched.dscrLoanPayment,
-      }
-    );
 
     const debtResult = validateInput(dscrDebtInput, dscrDebtError, {
       label: "Debt",
@@ -643,20 +660,33 @@
       defaultValue: 0,
     });
 
-    if (
-      !incomeResult.valid ||
-      !expenseResult.valid ||
-      !paymentResult.valid ||
-      !debtResult.valid
-    ) {
+    if (!expenseResult.valid || !debtResult.valid) {
+      clearDscrResults();
+      return;
+    }
+
+    const monthlyIncome = readRequiredDscrAmount(
+      dscrIncomeInput,
+      dscrIncomeError,
+      "Monthly Income",
+      touched.dscrIncome
+    );
+    const monthlyLoanPayment = readRequiredDscrAmount(
+      dscrLoanPaymentInput,
+      dscrLoanPaymentError,
+      "Monthly Loan Repayment",
+      touched.dscrLoanPayment
+    );
+
+    if (monthlyIncome == null || monthlyLoanPayment == null) {
       clearDscrResults();
       return;
     }
 
     const results = calculateDscr(
-      incomeResult.value,
+      monthlyIncome,
       expenseResult.value,
-      paymentResult.value,
+      monthlyLoanPayment,
       debtResult.value
     );
 
@@ -734,6 +764,10 @@
     }
 
     closeMenu();
+
+    if (mode === "dscr") {
+      handleDscrChange();
+    }
   }
 
   modeTrigger.addEventListener("click", function (e) {
@@ -786,20 +820,16 @@
   loanTenureInput.addEventListener("blur", markTouched("loanTenure", handleLoanChange));
   loanInterestInput.addEventListener("blur", markTouched("loanInterest", handleLoanChange));
 
-  dscrIncomeInput.addEventListener("input", markTouched("dscrIncome", handleDscrChange));
-  dscrExpenseInput.addEventListener("input", markTouched("dscrExpense", handleDscrChange));
-  dscrLoanPaymentInput.addEventListener(
-    "input",
-    markTouched("dscrLoanPayment", handleDscrChange)
-  );
-  dscrDebtInput.addEventListener("input", markTouched("dscrDebt", handleDscrChange));
-  dscrIncomeInput.addEventListener("blur", markTouched("dscrIncome", handleDscrChange));
-  dscrExpenseInput.addEventListener("blur", markTouched("dscrExpense", handleDscrChange));
-  dscrLoanPaymentInput.addEventListener(
-    "blur",
-    markTouched("dscrLoanPayment", handleDscrChange)
-  );
-  dscrDebtInput.addEventListener("blur", markTouched("dscrDebt", handleDscrChange));
+  function bindDscrField(field, input) {
+    input.addEventListener("input", markTouched(field, handleDscrChange));
+    input.addEventListener("change", markTouched(field, handleDscrChange));
+    input.addEventListener("blur", markTouched(field, handleDscrChange));
+  }
+
+  bindDscrField("dscrIncome", dscrIncomeInput);
+  bindDscrField("dscrExpense", dscrExpenseInput);
+  bindDscrField("dscrLoanPayment", dscrLoanPaymentInput);
+  bindDscrField("dscrDebt", dscrDebtInput);
 
   let deferredInstallPrompt = null;
   const installButton = document.getElementById("install-app");
