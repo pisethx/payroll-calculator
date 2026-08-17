@@ -55,11 +55,9 @@
   const dscrIncomeInput = document.getElementById("dscr-income");
   const dscrExpenseInput = document.getElementById("dscr-expense");
   const dscrLoanPaymentInput = document.getElementById("dscr-loan-payment");
-  const dscrDebtInput = document.getElementById("dscr-debt");
   const dscrIncomeError = document.getElementById("dscr-income-error");
   const dscrExpenseError = document.getElementById("dscr-expense-error");
   const dscrLoanPaymentError = document.getElementById("dscr-loan-payment-error");
-  const dscrDebtError = document.getElementById("dscr-debt-error");
 
   /** Track whether the user has interacted with each field */
   const touched = {
@@ -71,7 +69,6 @@
     dscrIncome: false,
     dscrExpense: false,
     dscrLoanPayment: false,
-    dscrDebt: false,
   };
 
   const payrollSummary = document.querySelector('[data-mode-panel="payroll"] .summary');
@@ -100,7 +97,7 @@
 
   const dscrResults = {
     netIncome: document.getElementById("result-dscr-net-income"),
-    debtService: document.getElementById("result-dscr-debt-service"),
+    loanPayment: document.getElementById("result-dscr-loan-payment"),
     value: document.getElementById("result-dscr-value"),
   };
 
@@ -118,7 +115,6 @@
     dscrIncome: dscrIncomeInput,
     dscrExpense: dscrExpenseInput,
     dscrLoanPayment: dscrLoanPaymentInput,
-    dscrDebt: dscrDebtInput,
   };
 
   // ---------------------------------------------------------------------------
@@ -386,21 +382,19 @@
   // ---------------------------------------------------------------------------
 
   /**
-   * DSCR = (Monthly Income - Monthly Expense) / (Monthly Loan Repayment + Debt)
+   * DSCR = (Monthly Income - Monthly Expense) / Monthly Loan Repayment
    * @param {number} monthlyIncome
    * @param {number} monthlyExpense
    * @param {number} monthlyLoanPayment
-   * @param {number} debt
    * @returns {object}
    */
-  function calculateDscr(monthlyIncome, monthlyExpense, monthlyLoanPayment, debt) {
+  function calculateDscr(monthlyIncome, monthlyExpense, monthlyLoanPayment) {
     const netIncome = monthlyIncome - monthlyExpense;
-    const totalDebtService = monthlyLoanPayment + debt;
-    const dscr = totalDebtService > 0 ? netIncome / totalDebtService : null;
+    const dscr = monthlyLoanPayment > 0 ? netIncome / monthlyLoanPayment : null;
 
     return {
       netIncome,
-      totalDebtService,
+      monthlyLoanPayment,
       dscr,
     };
   }
@@ -595,7 +589,7 @@
 
   function clearDscrResults() {
     clearText(dscrResults.netIncome);
-    clearText(dscrResults.debtService);
+    clearText(dscrResults.loanPayment);
     clearDscrValue(dscrResults.value);
     setSummaryReady(dscrSummary, false);
   }
@@ -605,18 +599,45 @@
    */
   function displayDscrResults(results) {
     setUSD(dscrResults.netIncome, results.netIncome);
-    setUSD(dscrResults.debtService, results.totalDebtService);
+    setUSD(dscrResults.loanPayment, results.monthlyLoanPayment);
     setDscrValue(dscrResults.value, results.dscr);
     setSummaryReady(dscrSummary, true);
   }
 
-  function handleDscrChange() {
-    const incomeResult = validateInput(dscrIncomeInput, dscrIncomeError, {
-      label: "Monthly Income",
-      required: true,
-      showRequiredError: touched.dscrIncome,
+  /**
+   * Read a required DSCR amount once both required fields may be filled.
+   * @param {HTMLInputElement} input
+   * @param {HTMLElement} errorEl
+   * @param {string} label
+   * @param {boolean} showRequiredError
+   * @returns {number | null}
+   */
+  function readRequiredDscrAmount(input, errorEl, label, showRequiredError) {
+    const raw = input.value.trim();
+
+    input.classList.remove("input--error");
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    }
+
+    if (raw === "") {
+      if (showRequiredError) {
+        showError(input, errorEl, `${label} is required.`);
+      }
+      return null;
+    }
+
+    const result = validateInput(input, errorEl, {
+      label,
+      required: false,
+      showRequiredError: false,
     });
 
+    return result.valid ? result.value : null;
+  }
+
+  function handleDscrChange() {
     const expenseResult = validateInput(dscrExpenseInput, dscrExpenseError, {
       label: "Monthly Expense",
       required: false,
@@ -625,46 +646,40 @@
       defaultValue: 0,
     });
 
-    const paymentResult = validateInput(
+    if (!expenseResult.valid) {
+      clearDscrResults();
+      return;
+    }
+
+    const monthlyIncome = readRequiredDscrAmount(
+      dscrIncomeInput,
+      dscrIncomeError,
+      "Monthly Income",
+      touched.dscrIncome
+    );
+    const monthlyLoanPayment = readRequiredDscrAmount(
       dscrLoanPaymentInput,
       dscrLoanPaymentError,
-      {
-        label: "Monthly Loan Repayment",
-        required: true,
-        showRequiredError: touched.dscrLoanPayment,
-      }
+      "Monthly Loan Repayment",
+      touched.dscrLoanPayment
     );
 
-    const debtResult = validateInput(dscrDebtInput, dscrDebtError, {
-      label: "Debt",
-      required: false,
-      showRequiredError: false,
-      emptyAsDefault: true,
-      defaultValue: 0,
-    });
-
-    if (
-      !incomeResult.valid ||
-      !expenseResult.valid ||
-      !paymentResult.valid ||
-      !debtResult.valid
-    ) {
+    if (monthlyIncome == null || monthlyLoanPayment == null) {
       clearDscrResults();
       return;
     }
 
     const results = calculateDscr(
-      incomeResult.value,
+      monthlyIncome,
       expenseResult.value,
-      paymentResult.value,
-      debtResult.value
+      monthlyLoanPayment
     );
 
     if (results.dscr == null) {
       showError(
         dscrLoanPaymentInput,
         dscrLoanPaymentError,
-        "Monthly Loan Repayment plus Debt must be greater than 0."
+        "Monthly Loan Repayment must be greater than 0."
       );
       clearDscrResults();
       return;
@@ -734,6 +749,10 @@
     }
 
     closeMenu();
+
+    if (mode === "dscr") {
+      handleDscrChange();
+    }
   }
 
   modeTrigger.addEventListener("click", function (e) {
@@ -786,20 +805,15 @@
   loanTenureInput.addEventListener("blur", markTouched("loanTenure", handleLoanChange));
   loanInterestInput.addEventListener("blur", markTouched("loanInterest", handleLoanChange));
 
-  dscrIncomeInput.addEventListener("input", markTouched("dscrIncome", handleDscrChange));
-  dscrExpenseInput.addEventListener("input", markTouched("dscrExpense", handleDscrChange));
-  dscrLoanPaymentInput.addEventListener(
-    "input",
-    markTouched("dscrLoanPayment", handleDscrChange)
-  );
-  dscrDebtInput.addEventListener("input", markTouched("dscrDebt", handleDscrChange));
-  dscrIncomeInput.addEventListener("blur", markTouched("dscrIncome", handleDscrChange));
-  dscrExpenseInput.addEventListener("blur", markTouched("dscrExpense", handleDscrChange));
-  dscrLoanPaymentInput.addEventListener(
-    "blur",
-    markTouched("dscrLoanPayment", handleDscrChange)
-  );
-  dscrDebtInput.addEventListener("blur", markTouched("dscrDebt", handleDscrChange));
+  function bindDscrField(field, input) {
+    input.addEventListener("input", markTouched(field, handleDscrChange));
+    input.addEventListener("change", markTouched(field, handleDscrChange));
+    input.addEventListener("blur", markTouched(field, handleDscrChange));
+  }
+
+  bindDscrField("dscrIncome", dscrIncomeInput);
+  bindDscrField("dscrExpense", dscrExpenseInput);
+  bindDscrField("dscrLoanPayment", dscrLoanPaymentInput);
 
   let deferredInstallPrompt = null;
   const installButton = document.getElementById("install-app");
