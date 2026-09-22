@@ -1,5 +1,5 @@
 /**
- * Calculators — payroll take-home, loan amortization, and DSCR coverage.
+ * Calculators — payroll take-home, loan amortization, DSCR coverage, and term deposits.
  */
 
 (function () {
@@ -23,10 +23,27 @@
   ];
   const TOP_TAX_RATE = 0.2;
 
+  /**
+   * Term deposit interest rates (% p.a.). Update this table to change rates.
+   * null = N/A for that credit type / currency.
+   */
+  const TERM_DEPOSIT_RATES = [
+    { months: 1, usdMaturity: 2.0, khrMaturity: 2.0, usdMonthly: null, khrMonthly: null },
+    { months: 3, usdMaturity: 2.5, khrMaturity: 2.5, usdMonthly: 2.25, khrMonthly: 2.25 },
+    { months: 6, usdMaturity: 3.5, khrMaturity: 3.5, usdMonthly: 3.25, khrMonthly: 3.25 },
+    { months: 12, usdMaturity: 4.5, khrMaturity: 4.5, usdMonthly: 4.0, khrMonthly: 4.0 },
+    { months: 18, usdMaturity: 4.5, khrMaturity: 4.5, usdMonthly: 4.0, khrMonthly: 4.0 },
+    { months: 24, usdMaturity: 4.5, khrMaturity: 4.5, usdMonthly: 4.0, khrMonthly: 4.0 },
+    { months: 36, usdMaturity: 5.5, khrMaturity: 5.5, usdMonthly: 4.0, khrMonthly: 4.0 },
+    { months: 48, usdMaturity: 5.5, khrMaturity: 5.5, usdMonthly: 4.0, khrMonthly: 4.0 },
+    { months: 60, usdMaturity: 5.5, khrMaturity: 5.5, usdMonthly: 4.0, khrMonthly: null },
+  ];
+
   const MODES = {
     payroll: { title: "Payroll" },
     loan: { title: "Loan" },
     dscr: { title: "DSCR" },
+    "term-deposit": { title: "Term Deposit" },
   };
 
   // ---------------------------------------------------------------------------
@@ -59,6 +76,15 @@
   const dscrExpenseError = document.getElementById("dscr-expense-error");
   const dscrLoanPaymentError = document.getElementById("dscr-loan-payment-error");
 
+  const tdAmountInput = document.getElementById("td-amount");
+  const tdAmountPrefix = document.getElementById("td-amount-prefix");
+  const tdAmountError = document.getElementById("td-amount-error");
+  const tdTermSelect = document.getElementById("td-term");
+  const tdTermError = document.getElementById("td-term-error");
+  const tdCurrencyButtons = document.querySelectorAll("[data-td-currency]");
+  const tdCreditButtons = document.querySelectorAll("[data-td-credit]");
+  const tdMonthlyRow = document.getElementById("result-td-monthly-row");
+
   /** Track whether the user has interacted with each field */
   const touched = {
     baseSalary: false,
@@ -69,11 +95,14 @@
     dscrIncome: false,
     dscrExpense: false,
     dscrLoanPayment: false,
+    tdAmount: false,
+    tdTerm: false,
   };
 
   const payrollSummary = document.querySelector('[data-mode-panel="payroll"] .summary');
   const loanSummary = document.querySelector('[data-mode-panel="loan"] .summary');
   const dscrSummary = document.querySelector('[data-mode-panel="dscr"] .summary');
+  const tdSummary = document.querySelector('[data-mode-panel="term-deposit"] .summary');
 
   const payrollResults = {
     baseSalary: document.getElementById("result-base-salary"),
@@ -101,7 +130,18 @@
     value: document.getElementById("result-dscr-value"),
   };
 
+  const tdResults = {
+    interest: document.getElementById("result-td-interest"),
+    amount: document.getElementById("result-td-amount"),
+    term: document.getElementById("result-td-term"),
+    rate: document.getElementById("result-td-rate"),
+    monthly: document.getElementById("result-td-monthly"),
+    maturity: document.getElementById("result-td-maturity"),
+  };
+
   let currentMode = "payroll";
+  let tdCurrency = "usd";
+  let tdCreditType = "maturity";
 
   const MODE_STORAGE_KEY = "payroll-calculator:mode";
   const INPUTS_STORAGE_KEY = "payroll-calculator:inputs";
@@ -115,6 +155,8 @@
     dscrIncome: dscrIncomeInput,
     dscrExpense: dscrExpenseInput,
     dscrLoanPayment: dscrLoanPaymentInput,
+    tdAmount: tdAmountInput,
+    tdTerm: tdTermSelect,
   };
 
   // ---------------------------------------------------------------------------
@@ -150,6 +192,8 @@
       Object.keys(persistableInputs).forEach(function (key) {
         data[key] = persistableInputs[key].value;
       });
+      data.tdCurrency = tdCurrency;
+      data.tdCreditType = tdCreditType;
       sessionStorage.setItem(INPUTS_STORAGE_KEY, JSON.stringify(data));
     } catch (err) {
       /* storage may be unavailable */
@@ -168,6 +212,12 @@
           touched[key] = true;
         }
       });
+      if (data.tdCurrency === "usd" || data.tdCurrency === "khr") {
+        tdCurrency = data.tdCurrency;
+      }
+      if (data.tdCreditType === "maturity" || data.tdCreditType === "monthly") {
+        tdCreditType = data.tdCreditType;
+      }
     } catch (err) {
       /* ignore malformed session data */
     }
@@ -194,6 +244,29 @@
   }
 
   /**
+   * Format a number as KHR with no decimals.
+   * @param {number} value
+   * @returns {string}
+   */
+  function formatKHR(value) {
+    const formatted =
+      "៛" +
+      Math.abs(Math.round(value)).toLocaleString("en-US", {
+        maximumFractionDigits: 0,
+      });
+    return value < 0 ? "-" + formatted : formatted;
+  }
+
+  /**
+   * @param {number} value
+   * @param {"usd" | "khr"} currency
+   * @returns {string}
+   */
+  function formatMoney(value, currency) {
+    return currency === "khr" ? formatKHR(value) : formatUSD(value);
+  }
+
+  /**
    * Set an element's text and mark it red when the amount is negative.
    * @param {HTMLElement} el
    * @param {string} text
@@ -210,6 +283,15 @@
    */
   function setUSD(el, value) {
     setText(el, formatUSD(value), value < 0);
+  }
+
+  /**
+   * @param {HTMLElement} el
+   * @param {number} value
+   * @param {"usd" | "khr"} currency
+   */
+  function setMoney(el, value, currency) {
+    setText(el, formatMoney(value, currency), value < 0);
   }
 
   /**
@@ -396,6 +478,78 @@
       netIncome,
       monthlyLoanPayment,
       dscr,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Term Deposit Calculation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @param {number} months
+   * @returns {object | null}
+   */
+  function findTermDepositRateRow(months) {
+    for (let i = 0; i < TERM_DEPOSIT_RATES.length; i++) {
+      if (TERM_DEPOSIT_RATES[i].months === months) {
+        return TERM_DEPOSIT_RATES[i];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Look up the annual rate for a term / currency / credit type.
+   * @param {number} months
+   * @param {"usd" | "khr"} currency
+   * @param {"maturity" | "monthly"} creditType
+   * @returns {number | null}
+   */
+  function lookupTermDepositRate(months, currency, creditType) {
+    const row = findTermDepositRateRow(months);
+    if (!row) return null;
+
+    if (creditType === "monthly") {
+      return currency === "khr" ? row.khrMonthly : row.usdMonthly;
+    }
+    return currency === "khr" ? row.khrMaturity : row.usdMaturity;
+  }
+
+  /**
+   * Whether monthly credit is available for a term / currency.
+   * @param {number} months
+   * @param {"usd" | "khr"} currency
+   * @returns {boolean}
+   */
+  function isMonthlyCreditAvailable(months, currency) {
+    const rate = lookupTermDepositRate(months, currency, "monthly");
+    return rate != null;
+  }
+
+  /**
+   * Simple-interest term deposit calculation.
+   * @param {number} amount
+   * @param {number} months
+   * @param {number} ratePercent
+   * @param {"maturity" | "monthly"} creditType
+   * @param {"usd" | "khr"} currency
+   * @returns {object}
+   */
+  function calculateTermDeposit(amount, months, ratePercent, creditType, currency) {
+    const years = months / 12;
+    const totalInterest = amount * (ratePercent / 100) * years;
+    const monthlyInterest = creditType === "monthly" ? totalInterest / months : null;
+    const maturityValue = amount + totalInterest;
+
+    return {
+      amount,
+      months,
+      ratePercent,
+      creditType,
+      currency,
+      totalInterest,
+      monthlyInterest,
+      maturityValue,
     };
   }
 
@@ -689,6 +843,145 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Term Deposit UI
+  // ---------------------------------------------------------------------------
+
+  function populateTermDepositTerms() {
+    const previous = tdTermSelect.value;
+    tdTermSelect.innerHTML = "";
+
+    TERM_DEPOSIT_RATES.forEach(function (row) {
+      const option = document.createElement("option");
+      option.value = String(row.months);
+      option.textContent =
+        row.months === 1 ? "1 month" : row.months + " months";
+      tdTermSelect.appendChild(option);
+    });
+
+    if (previous && findTermDepositRateRow(parseInt(previous, 10))) {
+      tdTermSelect.value = previous;
+    } else {
+      tdTermSelect.value = String(TERM_DEPOSIT_RATES[0].months);
+    }
+  }
+
+  function syncTermDepositCurrencyUI() {
+    tdCurrencyButtons.forEach(function (button) {
+      const selected = button.getAttribute("data-td-currency") === tdCurrency;
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+
+    if (tdCurrency === "khr") {
+      tdAmountPrefix.textContent = "៛";
+      tdAmountPrefix.classList.add("is-khr");
+      tdAmountInput.step = "1";
+      tdAmountInput.placeholder = "0";
+    } else {
+      tdAmountPrefix.textContent = "$";
+      tdAmountPrefix.classList.remove("is-khr");
+      tdAmountInput.step = "0.01";
+      tdAmountInput.placeholder = "0.00";
+    }
+  }
+
+  function syncTermDepositCreditUI() {
+    const months = parseInt(tdTermSelect.value, 10);
+    const monthlyAvailable = isMonthlyCreditAvailable(months, tdCurrency);
+    const monthlyButton = document.querySelector('[data-td-credit="monthly"]');
+
+    if (monthlyButton) {
+      monthlyButton.disabled = !monthlyAvailable;
+    }
+
+    if (!monthlyAvailable && tdCreditType === "monthly") {
+      tdCreditType = "maturity";
+    }
+
+    tdCreditButtons.forEach(function (button) {
+      const selected = button.getAttribute("data-td-credit") === tdCreditType;
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+  }
+
+  function clearTermDepositResults() {
+    clearText(tdResults.interest);
+    clearText(tdResults.amount);
+    clearText(tdResults.term);
+    clearText(tdResults.rate);
+    clearText(tdResults.monthly);
+    clearText(tdResults.maturity);
+    tdMonthlyRow.hidden = true;
+    setSummaryReady(tdSummary, false);
+  }
+
+  /**
+   * @param {object} results
+   */
+  function displayTermDepositResults(results) {
+    setMoney(tdResults.interest, results.totalInterest, results.currency);
+    setMoney(tdResults.amount, results.amount, results.currency);
+    setText(tdResults.term, formatTenure(results.months));
+    setText(tdResults.rate, formatPercent(results.ratePercent));
+    setMoney(tdResults.maturity, results.maturityValue, results.currency);
+
+    if (results.creditType === "monthly" && results.monthlyInterest != null) {
+      tdMonthlyRow.hidden = false;
+      setMoney(tdResults.monthly, results.monthlyInterest, results.currency);
+    } else {
+      tdMonthlyRow.hidden = true;
+      clearText(tdResults.monthly);
+    }
+
+    setSummaryReady(tdSummary, true);
+  }
+
+  function handleTermDepositChange() {
+    syncTermDepositCreditUI();
+
+    const amountResult = validateInput(tdAmountInput, tdAmountError, {
+      label: "Amount",
+      required: true,
+      showRequiredError: touched.tdAmount,
+    });
+
+    const months = parseInt(tdTermSelect.value, 10);
+    const ratePercent = lookupTermDepositRate(months, tdCurrency, tdCreditType);
+
+    tdTermSelect.classList.remove("input--error");
+    if (tdTermError) {
+      tdTermError.hidden = true;
+      tdTermError.textContent = "";
+    }
+
+    if (ratePercent == null) {
+      if (touched.tdTerm || tdCreditType === "monthly") {
+        showError(
+          tdTermSelect,
+          tdTermError,
+          "Monthly credit interest is not available for this term."
+        );
+      }
+      clearTermDepositResults();
+      return;
+    }
+
+    if (!amountResult.valid) {
+      clearTermDepositResults();
+      return;
+    }
+
+    displayTermDepositResults(
+      calculateTermDeposit(
+        amountResult.value,
+        months,
+        ratePercent,
+        tdCreditType,
+        tdCurrency
+      )
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Mode Switcher
   // ---------------------------------------------------------------------------
 
@@ -752,6 +1045,8 @@
 
     if (mode === "dscr") {
       handleDscrChange();
+    } else if (mode === "term-deposit") {
+      handleTermDepositChange();
     }
   }
 
@@ -815,6 +1110,32 @@
   bindDscrField("dscrExpense", dscrExpenseInput);
   bindDscrField("dscrLoanPayment", dscrLoanPaymentInput);
 
+  tdAmountInput.addEventListener("input", markTouched("tdAmount", handleTermDepositChange));
+  tdAmountInput.addEventListener("blur", markTouched("tdAmount", handleTermDepositChange));
+  tdTermSelect.addEventListener("change", markTouched("tdTerm", handleTermDepositChange));
+
+  tdCurrencyButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      const next = button.getAttribute("data-td-currency");
+      if (next !== "usd" && next !== "khr") return;
+      tdCurrency = next;
+      syncTermDepositCurrencyUI();
+      handleTermDepositChange();
+      saveInputs();
+    });
+  });
+
+  tdCreditButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      if (button.disabled) return;
+      const next = button.getAttribute("data-td-credit");
+      if (next !== "maturity" && next !== "monthly") return;
+      tdCreditType = next;
+      handleTermDepositChange();
+      saveInputs();
+    });
+  });
+
   let deferredInstallPrompt = null;
   const installButton = document.getElementById("install-app");
   if (installButton) {
@@ -847,8 +1168,14 @@
   document.getElementById("dscr-form").addEventListener("submit", function (e) {
     e.preventDefault();
   });
+  document.getElementById("term-deposit-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+  });
 
+  populateTermDepositTerms();
   restoreInputs();
+  syncTermDepositCurrencyUI();
+  syncTermDepositCreditUI();
   const savedMode = readSavedMode();
   if (savedMode) {
     setMode(savedMode, { persist: false });
@@ -856,4 +1183,5 @@
   handlePayrollChange();
   handleLoanChange();
   handleDscrChange();
+  handleTermDepositChange();
 })();

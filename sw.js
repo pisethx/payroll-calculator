@@ -2,7 +2,7 @@
  * Service worker — caches app shell for offline use.
  */
 
-const CACHE_NAME = "payroll-calculator-v8";
+const CACHE_NAME = "payroll-calculator-v10";
 
 const ASSETS = [
   "./index.html",
