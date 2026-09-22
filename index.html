@@ -276,6 +276,15 @@
           <label for="td-term">Term (months)</label>
           <div class="input-shell">
             <select id="td-term" name="tdTerm" required aria-describedby="td-term-error">
+              <option value="3">3 months</option>
+              <option value="6">6 months</option>
+              <option value="9">9 months</option>
+              <option value="12">12 months</option>
+              <option value="18">18 months</option>
+              <option value="24">24 months</option>
+              <option value="36">36 months</option>
+              <option value="48">48 months</option>
+              <option value="60">60 months</option>
             </select>
           </div>
           <p id="td-term-error" class="error-message" role="alert" hidden></p>
@@ -333,6 +342,12 @@
   <script src="app.js"></script>
   <script>
     if ("serviceWorker" in navigator) {
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js").catch(() => {});
       });
