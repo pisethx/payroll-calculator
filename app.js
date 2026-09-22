@@ -1184,6 +1184,8 @@
 
   populateTermDepositTerms();
   restoreInputs();
+  // Drop stale saved terms (e.g. removed 1-month) that are no longer in the rate table.
+  populateTermDepositTerms();
   syncTermDepositCurrencyUI();
   syncTermDepositCreditUI();
   const savedMode = readSavedMode();
