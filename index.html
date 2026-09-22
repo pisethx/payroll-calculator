@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Calculate payroll, loan payments, and DSCR coverage.">
+  <meta name="description" content="Calculate payroll, loan payments, DSCR coverage, and term deposits.">
   <meta name="theme-color" content="#e8f3ef">
   <meta name="color-scheme" content="light">
   <meta name="mobile-web-app-capable" content="yes">
@@ -56,6 +56,11 @@
           <li role="none">
             <button type="button" class="mode-switcher__option" role="menuitem" data-mode="dscr">
               DSCR
+            </button>
+          </li>
+          <li role="none">
+            <button type="button" class="mode-switcher__option" role="menuitem" data-mode="term-deposit">
+              Term Deposit
             </button>
           </li>
         </ul>
@@ -243,6 +248,74 @@
           <div class="breakdown__row breakdown__row--total">
             <dt>Monthly Loan Repayment</dt>
             <dd id="result-dscr-loan-payment">—</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+
+    <div class="panel mode-panel" data-mode-panel="term-deposit" hidden>
+      <form id="term-deposit-form" class="inputs inputs--stack" novalidate aria-label="Term deposit inputs">
+        <div class="field">
+          <div class="field-heading">
+            <label for="td-amount">Amount</label>
+            <div class="segmented" role="group" aria-label="Currency">
+              <button type="button" class="segmented__option" data-td-currency="usd" aria-pressed="true">USD</button>
+              <button type="button" class="segmented__option" data-td-currency="khr" aria-pressed="false">KHR</button>
+            </div>
+          </div>
+          <div class="input-shell">
+            <span class="input-prefix" id="td-amount-prefix" aria-hidden="true">$</span>
+            <input type="number" id="td-amount" name="tdAmount" min="0" step="0.01" placeholder="0.00" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="td-amount-error">
+          </div>
+          <p id="td-amount-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="td-term">Term (months)</label>
+          <div class="input-shell">
+            <select id="td-term" name="tdTerm" required aria-describedby="td-term-error">
+            </select>
+          </div>
+          <p id="td-term-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="td-credit-label">Credit interest</span>
+          <div class="segmented segmented--full" role="group" aria-labelledby="td-credit-label">
+            <button type="button" class="segmented__option" data-td-credit="maturity" aria-pressed="true">Maturity</button>
+            <button type="button" class="segmented__option" data-td-credit="monthly" aria-pressed="false">Monthly</button>
+          </div>
+        </div>
+      </form>
+
+      <section class="summary" aria-labelledby="td-interest-label" aria-live="polite">
+        <div class="take-home">
+          <span id="td-interest-label" class="take-home__label">Interest earned</span>
+          <span id="result-td-interest" class="take-home__value">—</span>
+        </div>
+
+        <dl class="breakdown">
+          <div class="breakdown__row">
+            <dt>Amount</dt>
+            <dd id="result-td-amount">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt>Term</dt>
+            <dd id="result-td-term">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt>Rate</dt>
+            <dd id="result-td-rate">—</dd>
+          </div>
+          <div class="breakdown__row" id="result-td-monthly-row" hidden>
+            <dt>Monthly interest</dt>
+            <dd id="result-td-monthly">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--total">
+            <dt>Maturity value</dt>
+            <dd id="result-td-maturity">—</dd>
           </div>
         </dl>
       </section>

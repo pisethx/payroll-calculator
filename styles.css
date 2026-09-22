@@ -345,6 +345,82 @@ body {
   letter-spacing: 0.01em;
 }
 
+.field-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-bottom: 0.45rem;
+  letter-spacing: 0.01em;
+}
+
+.field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: 0.45rem;
+}
+
+.field-heading label {
+  margin-bottom: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0.15rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  gap: 0.1rem;
+}
+
+.segmented--full {
+  display: flex;
+  width: 100%;
+}
+
+.segmented__option {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 0.4rem 0.7rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.segmented--full .segmented__option {
+  flex: 1;
+  padding: 0.7rem 0.75rem;
+  font-size: var(--font-size-body);
+}
+
+.segmented__option[aria-pressed="true"] {
+  background: #fff;
+  color: var(--mint);
+  box-shadow: 0 1px 2px rgba(15, 28, 26, 0.08);
+}
+
+.segmented__option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.segmented__option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--mint-soft);
+}
+
 .input-shell {
   position: relative;
   display: flex;
@@ -360,7 +436,12 @@ body {
   pointer-events: none;
 }
 
-input[type="number"] {
+.input-shell .input-prefix.is-khr {
+  font-size: 1rem;
+}
+
+input[type="number"],
+select {
   width: 100%;
   padding: 0.95rem var(--space-2);
   font-size: 1.125rem;
@@ -376,11 +457,28 @@ input[type="number"] {
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background 0.2s ease;
+}
+
+input[type="number"] {
   -moz-appearance: textfield;
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7c77'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.1rem;
+  padding-right: 2.4rem;
+  cursor: pointer;
 }
 
 .input-shell .input-prefix + input[type="number"] {
   padding-left: calc(var(--space-2) + 1.15rem);
+}
+
+.input-shell .input-prefix.is-khr + input[type="number"] {
+  padding-left: calc(var(--space-2) + 1.35rem);
 }
 
 input[type="number"]::-webkit-outer-spin-button,
@@ -394,19 +492,22 @@ input[type="number"]::placeholder {
   font-weight: 500;
 }
 
-input[type="number"]:focus {
+input[type="number"]:focus,
+select:focus {
   outline: none;
   border-color: rgba(31, 107, 87, 0.35);
   background: #fff;
   box-shadow: 0 0 0 3px var(--mint-soft);
 }
 
-input[type="number"].input--error {
+input[type="number"].input--error,
+select.input--error {
   border-color: rgba(161, 22, 47, 0.45);
   background: var(--error-bg);
 }
 
-input[type="number"].input--error:focus {
+input[type="number"].input--error:focus,
+select.input--error:focus {
   box-shadow: 0 0 0 3px rgba(161, 22, 47, 0.12);
 }
 
