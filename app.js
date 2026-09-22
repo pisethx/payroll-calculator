@@ -24,22 +24,20 @@
   const TOP_TAX_RATE = 0.2;
 
   /**
-   * Term deposit monthly rates (% p.a.), same for USD and KHR.
-   * Maturity rate = monthly + TERM_DEPOSIT_MATURITY_PREMIUM.
-   * Interest tax is withheld on gross interest earned.
+   * Term deposit rates (% p.a.), same for USD and KHR.
+   * Update this object to change rates. Interest tax is withheld on gross interest.
    */
-  const TERM_DEPOSIT_MATURITY_PREMIUM = 0.25;
   const TERM_DEPOSIT_INTEREST_TAX_RATE = 0.06;
   const TERM_DEPOSIT_RATES = [
-    { months: 3, monthly: 3.25 },
-    { months: 6, monthly: 4.25 },
-    { months: 9, monthly: 4.75 },
-    { months: 12, monthly: 5.25 },
-    { months: 18, monthly: 5.25 },
-    { months: 24, monthly: 5.25 },
-    { months: 36, monthly: 6.0 },
-    { months: 48, monthly: 6.0 },
-    { months: 60, monthly: 6.0 },
+    { months: 3, monthly: 3.25, maturity: 3.5 },
+    { months: 6, monthly: 4.25, maturity: 4.5 },
+    { months: 9, monthly: 4.75, maturity: 5.0 },
+    { months: 12, monthly: 5.25, maturity: 5.5 },
+    { months: 18, monthly: 5.25, maturity: 5.5 },
+    { months: 24, monthly: 5.25, maturity: 5.5 },
+    { months: 36, monthly: 6.0, maturity: 6.25 },
+    { months: 48, monthly: 6.0, maturity: 6.25 },
+    { months: 60, monthly: 6.0, maturity: 6.25 },
   ];
 
   const MODES = {
@@ -513,8 +511,7 @@
   function lookupTermDepositRate(months, _currency, creditType) {
     const row = findTermDepositRateRow(months);
     if (!row) return null;
-    if (creditType === "monthly") return row.monthly;
-    return row.monthly + TERM_DEPOSIT_MATURITY_PREMIUM;
+    return creditType === "monthly" ? row.monthly : row.maturity;
   }
 
   /**
