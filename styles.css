@@ -593,6 +593,10 @@ select.input--error:focus {
   border-bottom: 1px solid var(--line);
 }
 
+.breakdown__row[hidden] {
+  display: none;
+}
+
 .breakdown__row:last-child {
   border-bottom: none;
   padding-bottom: 0;
