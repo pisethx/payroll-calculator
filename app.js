@@ -26,8 +26,10 @@
   /**
    * Term deposit monthly rates (% p.a.), same for USD and KHR.
    * Maturity rate = monthly + TERM_DEPOSIT_MATURITY_PREMIUM.
+   * Interest tax is withheld on gross interest earned.
    */
   const TERM_DEPOSIT_MATURITY_PREMIUM = 0.25;
+  const TERM_DEPOSIT_INTEREST_TAX_RATE = 0.06;
   const TERM_DEPOSIT_RATES = [
     { months: 3, monthly: 3.25 },
     { months: 6, monthly: 4.25 },
@@ -136,6 +138,8 @@
     amount: document.getElementById("result-td-amount"),
     term: document.getElementById("result-td-term"),
     rate: document.getElementById("result-td-rate"),
+    grossInterest: document.getElementById("result-td-gross-interest"),
+    tax: document.getElementById("result-td-tax"),
     monthly: document.getElementById("result-td-monthly"),
     maturity: document.getElementById("result-td-maturity"),
   };
@@ -524,7 +528,7 @@
   }
 
   /**
-   * Simple-interest term deposit calculation.
+   * Simple-interest term deposit calculation with 6% tax on interest.
    * @param {number} amount
    * @param {number} months
    * @param {number} ratePercent
@@ -534,9 +538,14 @@
    */
   function calculateTermDeposit(amount, months, ratePercent, creditType, currency) {
     const years = months / 12;
-    const totalInterest = amount * (ratePercent / 100) * years;
-    const monthlyInterest = creditType === "monthly" ? totalInterest / months : null;
-    const maturityValue = amount + totalInterest;
+    const grossInterest = amount * (ratePercent / 100) * years;
+    const tax = grossInterest * TERM_DEPOSIT_INTEREST_TAX_RATE;
+    const netInterest = grossInterest - tax;
+    const monthlyGross =
+      creditType === "monthly" ? grossInterest / months : null;
+    const monthlyNet =
+      creditType === "monthly" ? netInterest / months : null;
+    const maturityValue = amount + netInterest;
 
     return {
       amount,
@@ -544,8 +553,11 @@
       ratePercent,
       creditType,
       currency,
-      totalInterest,
-      monthlyInterest,
+      grossInterest,
+      tax,
+      netInterest,
+      monthlyGross,
+      monthlyNet,
       maturityValue,
     };
   }
@@ -905,6 +917,8 @@
     clearText(tdResults.amount);
     clearText(tdResults.term);
     clearText(tdResults.rate);
+    clearText(tdResults.grossInterest);
+    clearText(tdResults.tax);
     clearText(tdResults.monthly);
     clearText(tdResults.maturity);
     tdMonthlyRow.hidden = true;
@@ -915,15 +929,17 @@
    * @param {object} results
    */
   function displayTermDepositResults(results) {
-    setMoney(tdResults.interest, results.totalInterest, results.currency);
+    setMoney(tdResults.interest, results.netInterest, results.currency);
     setMoney(tdResults.amount, results.amount, results.currency);
     setText(tdResults.term, formatTenure(results.months));
     setText(tdResults.rate, formatPercent(results.ratePercent));
+    setMoney(tdResults.grossInterest, results.grossInterest, results.currency);
+    setMoney(tdResults.tax, -results.tax, results.currency);
     setMoney(tdResults.maturity, results.maturityValue, results.currency);
 
-    if (results.creditType === "monthly" && results.monthlyInterest != null) {
+    if (results.creditType === "monthly" && results.monthlyNet != null) {
       tdMonthlyRow.hidden = false;
-      setMoney(tdResults.monthly, results.monthlyInterest, results.currency);
+      setMoney(tdResults.monthly, results.monthlyNet, results.currency);
     } else {
       tdMonthlyRow.hidden = true;
       clearText(tdResults.monthly);
