@@ -909,15 +909,44 @@
     });
 
     const customSelected = tdRateSource === "custom";
-    tdCustomRateField.hidden = !customSelected;
-    tdRateInput.required = customSelected;
-    if (!customSelected) {
-      tdRateInput.classList.remove("input--error");
-      if (tdRateError) {
-        tdRateError.hidden = true;
-        tdRateError.textContent = "";
+    if (tdCustomRateField) {
+      tdCustomRateField.hidden = !customSelected;
+    }
+    if (tdRateInput) {
+      tdRateInput.required = customSelected;
+      if (!customSelected) {
+        tdRateInput.classList.remove("input--error");
+        if (tdRateError) {
+          tdRateError.hidden = true;
+          tdRateError.textContent = "";
+        }
       }
     }
+  }
+
+  /**
+   * @param {"standard" | "custom"} next
+   */
+  function setTermDepositRateSource(next) {
+    if (next !== "standard" && next !== "custom") return;
+    const switchedToCustom = next === "custom" && tdRateSource !== "custom";
+    tdRateSource = next;
+    syncTermDepositRateSourceUI();
+
+    if (switchedToCustom && tdRateInput) {
+      const months = parseInt(tdTermSelect.value, 10);
+      const suggested = lookupTermDepositRate(months, tdCurrency, tdCreditType);
+      if (tdRateInput.value.trim() === "" && suggested != null) {
+        tdRateInput.value = String(suggested);
+      }
+      requestAnimationFrame(function () {
+        tdRateInput.focus({ preventScroll: false });
+        tdRateInput.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    }
+
+    handleTermDepositChange();
+    saveInputs();
   }
 
   function syncTermDepositCreditUI() {
@@ -1170,17 +1199,15 @@
   tdAmountInput.addEventListener("input", markTouched("tdAmount", handleTermDepositChange));
   tdAmountInput.addEventListener("blur", markTouched("tdAmount", handleTermDepositChange));
   tdTermSelect.addEventListener("change", markTouched("tdTerm", handleTermDepositChange));
-  tdRateInput.addEventListener("input", markTouched("tdRate", handleTermDepositChange));
-  tdRateInput.addEventListener("blur", markTouched("tdRate", handleTermDepositChange));
+  if (tdRateInput) {
+    tdRateInput.addEventListener("input", markTouched("tdRate", handleTermDepositChange));
+    tdRateInput.addEventListener("blur", markTouched("tdRate", handleTermDepositChange));
+  }
 
-  tdRateSourceButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
-      const next = button.getAttribute("data-td-rate-source");
-      if (next !== "standard" && next !== "custom") return;
-      tdRateSource = next;
-      handleTermDepositChange();
-      saveInputs();
-    });
+  document.getElementById("term-deposit-form").addEventListener("click", function (e) {
+    const rateButton = e.target.closest("[data-td-rate-source]");
+    if (!rateButton) return;
+    setTermDepositRateSource(rateButton.getAttribute("data-td-rate-source"));
   });
 
   tdCurrencyButtons.forEach(function (button) {
