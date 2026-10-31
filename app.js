@@ -82,7 +82,11 @@
   const tdAmountError = document.getElementById("td-amount-error");
   const tdTermSelect = document.getElementById("td-term");
   const tdTermError = document.getElementById("td-term-error");
+  const tdRateInput = document.getElementById("td-rate");
+  const tdRateError = document.getElementById("td-rate-error");
+  const tdCustomRateField = document.getElementById("td-custom-rate-field");
   const tdCurrencyButtons = document.querySelectorAll("[data-td-currency]");
+  const tdRateSourceButtons = document.querySelectorAll("[data-td-rate-source]");
   const tdCreditButtons = document.querySelectorAll("[data-td-credit]");
   const tdMonthlyRow = document.getElementById("result-td-monthly-row");
 
@@ -98,6 +102,7 @@
     dscrLoanPayment: false,
     tdAmount: false,
     tdTerm: false,
+    tdRate: false,
   };
 
   const payrollSummary = document.querySelector('[data-mode-panel="payroll"] .summary');
@@ -145,6 +150,7 @@
   let currentMode = "payroll";
   let tdCurrency = "usd";
   let tdCreditType = "maturity";
+  let tdRateSource = "standard";
 
   const MODE_STORAGE_KEY = "payroll-calculator:mode";
   const INPUTS_STORAGE_KEY = "payroll-calculator:inputs";
@@ -160,6 +166,7 @@
     dscrLoanPayment: dscrLoanPaymentInput,
     tdAmount: tdAmountInput,
     tdTerm: tdTermSelect,
+    tdRate: tdRateInput,
   };
 
   // ---------------------------------------------------------------------------
@@ -197,6 +204,7 @@
       });
       data.tdCurrency = tdCurrency;
       data.tdCreditType = tdCreditType;
+      data.tdRateSource = tdRateSource;
       sessionStorage.setItem(INPUTS_STORAGE_KEY, JSON.stringify(data));
     } catch (err) {
       /* storage may be unavailable */
@@ -220,6 +228,9 @@
       }
       if (data.tdCreditType === "maturity" || data.tdCreditType === "monthly") {
         tdCreditType = data.tdCreditType;
+      }
+      if (data.tdRateSource === "standard" || data.tdRateSource === "custom") {
+        tdRateSource = data.tdRateSource;
       }
     } catch (err) {
       /* ignore malformed session data */
@@ -890,9 +901,30 @@
     }
   }
 
+  function syncTermDepositRateSourceUI() {
+    tdRateSourceButtons.forEach(function (button) {
+      const selected =
+        button.getAttribute("data-td-rate-source") === tdRateSource;
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+
+    const customSelected = tdRateSource === "custom";
+    tdCustomRateField.hidden = !customSelected;
+    tdRateInput.required = customSelected;
+    if (!customSelected) {
+      tdRateInput.classList.remove("input--error");
+      if (tdRateError) {
+        tdRateError.hidden = true;
+        tdRateError.textContent = "";
+      }
+    }
+  }
+
   function syncTermDepositCreditUI() {
     const months = parseInt(tdTermSelect.value, 10);
-    const monthlyAvailable = isMonthlyCreditAvailable(months, tdCurrency);
+    const monthlyAvailable =
+      tdRateSource === "custom" ||
+      isMonthlyCreditAvailable(months, tdCurrency);
     const monthlyButton = document.querySelector('[data-td-credit="monthly"]');
 
     if (monthlyButton) {
@@ -946,6 +978,7 @@
   }
 
   function handleTermDepositChange() {
+    syncTermDepositRateSourceUI();
     syncTermDepositCreditUI();
 
     const amountResult = validateInput(tdAmountInput, tdAmountError, {
@@ -955,7 +988,7 @@
     });
 
     const months = parseInt(tdTermSelect.value, 10);
-    const ratePercent = lookupTermDepositRate(months, tdCurrency, tdCreditType);
+    let ratePercent = null;
 
     tdTermSelect.classList.remove("input--error");
     if (tdTermError) {
@@ -963,16 +996,30 @@
       tdTermError.textContent = "";
     }
 
-    if (ratePercent == null) {
-      if (touched.tdTerm || tdCreditType === "monthly") {
-        showError(
-          tdTermSelect,
-          tdTermError,
-          "Monthly credit interest is not available for this term."
-        );
+    if (tdRateSource === "custom") {
+      const rateResult = validateInput(tdRateInput, tdRateError, {
+        label: "Rate",
+        required: true,
+        showRequiredError: touched.tdRate,
+      });
+      if (!rateResult.valid) {
+        clearTermDepositResults();
+        return;
       }
-      clearTermDepositResults();
-      return;
+      ratePercent = rateResult.value;
+    } else {
+      ratePercent = lookupTermDepositRate(months, tdCurrency, tdCreditType);
+      if (ratePercent == null) {
+        if (touched.tdTerm || tdCreditType === "monthly") {
+          showError(
+            tdTermSelect,
+            tdTermError,
+            "Monthly credit interest is not available for this term."
+          );
+        }
+        clearTermDepositResults();
+        return;
+      }
     }
 
     if (!amountResult.valid) {
@@ -1123,6 +1170,18 @@
   tdAmountInput.addEventListener("input", markTouched("tdAmount", handleTermDepositChange));
   tdAmountInput.addEventListener("blur", markTouched("tdAmount", handleTermDepositChange));
   tdTermSelect.addEventListener("change", markTouched("tdTerm", handleTermDepositChange));
+  tdRateInput.addEventListener("input", markTouched("tdRate", handleTermDepositChange));
+  tdRateInput.addEventListener("blur", markTouched("tdRate", handleTermDepositChange));
+
+  tdRateSourceButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      const next = button.getAttribute("data-td-rate-source");
+      if (next !== "standard" && next !== "custom") return;
+      tdRateSource = next;
+      handleTermDepositChange();
+      saveInputs();
+    });
+  });
 
   tdCurrencyButtons.forEach(function (button) {
     button.addEventListener("click", function () {
@@ -1187,6 +1246,7 @@
   // Drop stale saved terms (e.g. removed 1-month) that are no longer in the rate table.
   populateTermDepositTerms();
   syncTermDepositCurrencyUI();
+  syncTermDepositRateSourceUI();
   syncTermDepositCreditUI();
   const savedMode = readSavedMode();
   if (savedMode) {

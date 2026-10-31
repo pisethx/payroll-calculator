@@ -291,6 +291,24 @@
         </div>
 
         <div class="field">
+          <span class="field-label" id="td-rate-source-label">Interest rate</span>
+          <div class="segmented segmented--full" role="group" aria-labelledby="td-rate-source-label">
+            <button type="button" class="segmented__option" data-td-rate-source="standard" aria-pressed="true">Standard</button>
+            <button type="button" class="segmented__option" data-td-rate-source="custom" aria-pressed="false">Custom</button>
+          </div>
+        </div>
+
+        <div class="field" id="td-custom-rate-field" hidden>
+          <label for="td-rate">Rate (% p.a.)</label>
+          <div class="input-shell">
+            <input type="number" id="td-rate" name="tdRate" min="0" step="0.01" placeholder="0" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="td-rate-error">
+          </div>
+          <p id="td-rate-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
           <span class="field-label" id="td-credit-label">Credit interest</span>
           <div class="segmented segmented--full" role="group" aria-labelledby="td-credit-label">
             <button type="button" class="segmented__option" data-td-credit="maturity" aria-pressed="true">Maturity</button>
