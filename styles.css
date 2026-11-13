@@ -340,6 +340,18 @@ body {
   grid-column: 1 / -1;
 }
 
+.inputs.inputs--grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.breakdown__note {
+  margin-left: 0.4rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
 .field label {
   display: block;
   font-size: var(--font-size-sm);

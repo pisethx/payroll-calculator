@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Calculate payroll, loan payments, DSCR coverage, and term deposits.">
+  <meta name="description" content="Calculate payroll, loan payments, DSCR coverage, term deposits, and online FX pricing.">
   <meta name="theme-color" content="#e8f3ef">
   <meta name="color-scheme" content="light">
   <meta name="mobile-web-app-capable" content="yes">
@@ -61,6 +61,11 @@
           <li role="none">
             <button type="button" class="mode-switcher__option" role="menuitem" data-mode="term-deposit">
               Term Deposit
+            </button>
+          </li>
+          <li role="none">
+            <button type="button" class="mode-switcher__option" role="menuitem" data-mode="online-fx">
+              Online FX
             </button>
           </li>
         </ul>
@@ -350,6 +355,86 @@
           <div class="breakdown__row breakdown__row--total">
             <dt>Maturity value</dt>
             <dd id="result-td-maturity">—</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+    <div class="panel mode-panel" data-mode-panel="online-fx" hidden>
+      <form id="fx-form" class="inputs inputs--grid" novalidate aria-label="Online FX inputs">
+        <div class="field">
+          <label for="fx-price">Price (CNY)</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">¥</span>
+            <input type="number" id="fx-price" name="fxPrice" min="0" step="0.01" placeholder="0.00" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="fx-price-error">
+          </div>
+          <p id="fx-price-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="fx-rate">CNY per $1</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">¥</span>
+            <input type="number" id="fx-rate" name="fxRate" min="0" step="0.0001" placeholder="6.6851" required
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="fx-rate-error">
+          </div>
+          <p id="fx-rate-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="fx-fee">Fee (%)</label>
+          <div class="input-shell">
+            <input type="number" id="fx-fee" name="fxFee" min="0" step="0.01" placeholder="3"
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="fx-fee-error">
+          </div>
+          <p id="fx-fee-error" class="error-message" role="alert" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="fx-shipping">Shipping</label>
+          <div class="input-shell">
+            <span class="input-prefix" aria-hidden="true">$</span>
+            <input type="number" id="fx-shipping" name="fxShipping" min="0" step="0.01" placeholder="1.25"
+              inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" autocomplete="off"
+              aria-describedby="fx-shipping-error">
+          </div>
+          <p id="fx-shipping-error" class="error-message" role="alert" hidden></p>
+        </div>
+      </form>
+
+      <section class="summary" aria-labelledby="fx-cost-label" aria-live="polite">
+        <div class="take-home">
+          <span id="fx-cost-label" class="take-home__label">Original price (USD)</span>
+          <span id="result-fx-cost" class="take-home__value">—</span>
+        </div>
+
+        <dl class="breakdown">
+          <div class="breakdown__row">
+            <dt>Price</dt>
+            <dd id="result-fx-converted">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt id="result-fx-fee-label">Fee</dt>
+            <dd id="result-fx-fee">—</dd>
+          </div>
+          <div class="breakdown__row">
+            <dt>Shipping</dt>
+            <dd id="result-fx-shipping">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--total">
+            <dt>Sell (+$10)</dt>
+            <dd id="result-fx-sell-10">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--total">
+            <dt>Sell (+$15)</dt>
+            <dd id="result-fx-sell-15">—</dd>
+          </div>
+          <div class="breakdown__row breakdown__row--total">
+            <dt>Sell (+$20)</dt>
+            <dd id="result-fx-sell-20">—</dd>
           </div>
         </dl>
       </section>

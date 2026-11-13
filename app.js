@@ -1,5 +1,6 @@
 /**
- * Calculators — payroll take-home, loan amortization, DSCR coverage, and term deposits.
+ * Calculators — payroll take-home, loan amortization, DSCR coverage, term deposits,
+ * and online FX (CNY → USD) resale pricing.
  */
 
 (function () {
@@ -45,7 +46,17 @@
     loan: { title: "Loan" },
     dscr: { title: "DSCR" },
     "term-deposit": { title: "Term Deposit" },
+    "online-fx": { title: "Online FX" },
   };
+
+  // Online FX defaults. Rate is CNY per 1 USD (as of 2026-11-13).
+  const FX_DEFAULTS = {
+    rate: 6.6851,
+    fee: 3,
+    shipping: 1.25,
+  };
+  const FX_PROFITS = [10, 15, 20];
+  const FX_ROUND_TO = 5;
 
   // ---------------------------------------------------------------------------
   // DOM References
@@ -103,6 +114,7 @@
     tdAmount: false,
     tdTerm: false,
     tdRate: false,
+    fxPrice: false,
   };
 
   const payrollSummary = document.querySelector('[data-mode-panel="payroll"] .summary');
@@ -152,7 +164,28 @@
   let tdCreditType = "maturity";
   let tdRateSource = "standard";
 
+  const fxPriceInput = document.getElementById("fx-price");
+  const fxRateInput = document.getElementById("fx-rate");
+  const fxFeeInput = document.getElementById("fx-fee");
+  const fxShippingInput = document.getElementById("fx-shipping");
+  const fxPriceError = document.getElementById("fx-price-error");
+  const fxRateError = document.getElementById("fx-rate-error");
+  const fxFeeError = document.getElementById("fx-fee-error");
+  const fxShippingError = document.getElementById("fx-shipping-error");
+  const fxSummary = document.querySelector('[data-mode-panel="online-fx"] .summary');
+  const fxResults = {
+    cost: document.getElementById("result-fx-cost"),
+    converted: document.getElementById("result-fx-converted"),
+    feeLabel: document.getElementById("result-fx-fee-label"),
+    fee: document.getElementById("result-fx-fee"),
+    shipping: document.getElementById("result-fx-shipping"),
+    sell: FX_PROFITS.map(function (profit) {
+      return document.getElementById("result-fx-sell-" + profit);
+    }),
+  };
+
   const MODE_STORAGE_KEY = "payroll-calculator:mode";
+  const FX_SETTINGS_STORAGE_KEY = "payroll-calculator:fx-settings";
   const INPUTS_STORAGE_KEY = "payroll-calculator:inputs";
 
   const persistableInputs = {
@@ -167,6 +200,7 @@
     tdAmount: tdAmountInput,
     tdTerm: tdTermSelect,
     tdRate: tdRateInput,
+    fxPrice: fxPriceInput,
   };
 
   // ---------------------------------------------------------------------------
@@ -235,6 +269,37 @@
     } catch (err) {
       /* ignore malformed session data */
     }
+  }
+
+  /**
+   * Persist FX settings (rate, fee, shipping) across sessions.
+   */
+  function saveFxSettings() {
+    try {
+      localStorage.setItem(
+        FX_SETTINGS_STORAGE_KEY,
+        JSON.stringify({
+          rate: fxRateInput.value,
+          fee: fxFeeInput.value,
+          shipping: fxShippingInput.value,
+        })
+      );
+    } catch (err) {
+      /* storage may be unavailable */
+    }
+  }
+
+  function restoreFxSettings() {
+    let data = {};
+    try {
+      data = JSON.parse(localStorage.getItem(FX_SETTINGS_STORAGE_KEY) || "{}") || {};
+    } catch (err) {
+      data = {};
+    }
+    fxRateInput.value = typeof data.rate === "string" ? data.rate : String(FX_DEFAULTS.rate);
+    fxFeeInput.value = typeof data.fee === "string" ? data.fee : String(FX_DEFAULTS.fee);
+    fxShippingInput.value =
+      typeof data.shipping === "string" ? data.shipping : FX_DEFAULTS.shipping.toFixed(2);
   }
 
   // ---------------------------------------------------------------------------
@@ -471,6 +536,40 @@
       totalPayable,
       totalInterest,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Online FX Calculation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Round up to the nearest multiple of `step` (e.g. 51.20 → 55).
+   * A tiny epsilon guards against float noise like 50.0000000001.
+   * @param {number} value
+   * @param {number} step
+   * @returns {number}
+   */
+  function roundUpTo(value, step) {
+    return Math.ceil(value / step - 1e-9) * step;
+  }
+
+  /**
+   * cost = priceCny / rate × (1 + fee%) + shipping
+   * sell = roundUp(cost + profit, 5)
+   * @param {number} priceCny
+   * @param {number} rate CNY per 1 USD
+   * @param {number} feePercent
+   * @param {number} shipping USD
+   */
+  function calculateOnlineFx(priceCny, rate, feePercent, shipping) {
+    const converted = priceCny / rate;
+    const fee = converted * (feePercent / 100);
+    const cost = converted + fee + shipping;
+    const sell = FX_PROFITS.map(function (profit) {
+      const price = roundUpTo(cost + profit, FX_ROUND_TO);
+      return { profit, price, actualProfit: price - cost };
+    });
+    return { converted, feePercent, fee, shipping, cost, sell };
   }
 
   // ---------------------------------------------------------------------------
@@ -751,6 +850,75 @@
 
     displayLoanResults(
       calculateLoan(amountResult.value, tenureResult.value, interestResult.value)
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Online FX UI
+  // ---------------------------------------------------------------------------
+
+  function clearFxResults() {
+    clearText(fxResults.cost);
+    clearText(fxResults.converted);
+    clearText(fxResults.fee);
+    clearText(fxResults.shipping);
+    fxResults.sell.forEach(clearText);
+    setSummaryReady(fxSummary, false);
+  }
+
+  function displayFxResults(results) {
+    setUSD(fxResults.cost, results.cost);
+    setUSD(fxResults.converted, results.converted);
+    fxResults.feeLabel.textContent = "Fee (" + formatPercent(results.feePercent) + ")";
+    setUSD(fxResults.fee, results.fee);
+    setUSD(fxResults.shipping, results.shipping);
+    results.sell.forEach(function (row, i) {
+      const el = fxResults.sell[i];
+      el.classList.remove("is-negative");
+      el.textContent = "";
+      const note = document.createElement("span");
+      note.className = "breakdown__note";
+      note.textContent = "+" + formatUSD(row.actualProfit);
+      el.append(formatUSD(row.price), note);
+    });
+    setSummaryReady(fxSummary, true);
+  }
+
+  function handleFxChange() {
+    const priceResult = validateInput(fxPriceInput, fxPriceError, {
+      label: "Price",
+      required: true,
+      showRequiredError: touched.fxPrice,
+    });
+    const rateResult = validateInput(fxRateInput, fxRateError, {
+      label: "Exchange rate",
+      required: true,
+      showRequiredError: true,
+      minExclusive: 0,
+    });
+    const feeResult = validateInput(fxFeeInput, fxFeeError, {
+      label: "Fee",
+      emptyAsDefault: true,
+      defaultValue: FX_DEFAULTS.fee,
+    });
+    const shippingResult = validateInput(fxShippingInput, fxShippingError, {
+      label: "Shipping",
+      emptyAsDefault: true,
+      defaultValue: FX_DEFAULTS.shipping,
+    });
+
+    if (!priceResult.valid || !rateResult.valid || !feeResult.valid || !shippingResult.valid) {
+      clearFxResults();
+      return;
+    }
+
+    displayFxResults(
+      calculateOnlineFx(
+        priceResult.value,
+        rateResult.value,
+        feeResult.value,
+        shippingResult.value
+      )
     );
   }
 
@@ -1133,6 +1301,8 @@
       handleDscrChange();
     } else if (mode === "term-deposit") {
       handleTermDepositChange();
+    } else if (mode === "online-fx") {
+      handleFxChange();
     }
   }
 
@@ -1204,6 +1374,16 @@
     tdRateInput.addEventListener("blur", markTouched("tdRate", handleTermDepositChange));
   }
 
+  ["input", "blur"].forEach(function (type) {
+    fxPriceInput.addEventListener(type, markTouched("fxPrice", handleFxChange));
+    [fxRateInput, fxFeeInput, fxShippingInput].forEach(function (input) {
+      input.addEventListener(type, function () {
+        handleFxChange();
+        saveFxSettings();
+      });
+    });
+  });
+
   document.getElementById("term-deposit-form").addEventListener("click", function (e) {
     const rateButton = e.target.closest("[data-td-rate-source]");
     if (!rateButton) return;
@@ -1267,8 +1447,12 @@
   document.getElementById("term-deposit-form").addEventListener("submit", function (e) {
     e.preventDefault();
   });
+  document.getElementById("fx-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+  });
 
   populateTermDepositTerms();
+  restoreFxSettings();
   restoreInputs();
   // Drop stale saved terms (e.g. removed 1-month) that are no longer in the rate table.
   populateTermDepositTerms();
@@ -1283,4 +1467,5 @@
   handleLoanChange();
   handleDscrChange();
   handleTermDepositChange();
+  handleFxChange();
 })();
